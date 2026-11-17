@@ -88,7 +88,7 @@ const PAIR_MODES = ["EN → DE","DE → EN"];
 
 const DEFAULT_VOCAB_URL = "https://raw.githubusercontent.com/Jana-DADS/mein-wortschatz/main/german_vocab.csv";
 const VERSION_JSON_URL = "https://raw.githubusercontent.com/Jana-DADS/mein-wortschatz/main/version.json";
-const APP_VERSION = "1.0.0";
+const APP_VERSION = "1.0.2";
 // Reset stats on new version
 (function() {
   localStorage.setItem("deAppVersion", APP_VERSION);
@@ -464,7 +464,7 @@ function App() {
           {view==="dashboard"  && words.length > 0 && <Dashboard words={words} progress={progress} settings={settings} setSettings={setSettings} introducedWords={introducedWords} newWords={newWords} learnedCount={learnedCount} streak={streak} setView={setView} userName={settings.userName} setSessionStartKey={setSessionStartKey} />}
             {view==="flashcards" && <Flashcards key={sessionStartKey} words={words} progress={progress} settings={settings} setDifficulty={setDifficulty} markCorrect={markCorrect} markWrong={markWrong} markIntroduced={markIntroduced} incrementTaughtToday={incrementTaughtToday} incrementDailyReview={incrementDailyReview} setView={setView} introducedWords={introducedWords} lastNewWordId={lastNewWordId} setLastNewWordId={setLastNewWordId} />}
             {view==="dictionary" && <Dictionary words={words} progress={progress} setDifficulty={setDifficulty} />}
-            {view==="update-progress" && <UpdateProgress introducedCount={introducedCount} taughtTodayCount={taughtTodayCount} streak={streak} streakThreshold={settings.streakThreshold || 10} intervals={settings.intervals || { Hard:1, Default:3, Easy:7 }} onUpdateProgress={handleUpdateProgress} onSaveStreakThreshold={(v) => setSettings(s => ({...s, streakThreshold: v}))} onSaveIntervals={(iv) => setSettings(s => ({...s, intervals: iv}))} />}
+            {view==="update-progress" && <UpdateProgress introducedCount={introducedCount} taughtTodayCount={taughtTodayCount} streak={streak} streakThreshold={settings.streakThreshold || 10} intervals={settings.intervals || { Hard:1, Default:3, Easy:7 }} onUpdateProgress={handleUpdateProgress} onSaveStreakThreshold={(v) => setSettings(s => ({...s, streakThreshold: v}))} onSaveIntervals={(iv) => setSettings(s => ({...s, intervals: iv}))} requireArticle={!!settings.requireArticle} onSaveRequireArticle={(v) => setSettings(s => ({...s, requireArticle: v}))} />}
             {view==="webpages"    && <WebPages webPages={webPages} saveWebPages={saveWebPages} />}
             {view==="upload"     && <VocabSettings loadVocabFromUrl={loadVocabFromUrl} vocabStatus={vocabStatus} vocabError={vocabError} wordCount={words.length} />}
           </div>
@@ -1028,7 +1028,7 @@ function Flashcards({ words, progress, settings, setDifficulty, markCorrect, mar
             <div style={{ fontSize:14, color:"var(--text2)", fontStyle:"italic", marginBottom:8 }}>{backS}</div>
           </div>
           {/* Practice */}
-          <PracticeField correctAnswer={isDE_first ? word.en : word.de} isDE={!isDE_first} onNext={next} />
+          <PracticeField info={word.info} correctAnswer={isDE_first ? word.en : word.de} isDE={!isDE_first} onNext={next} />
           {/* Buttons */}
           <div style={{ marginTop:16 }}>
             <DifficultyButtons isLearn={true} wordId={word.id} savedDiff={progress[word.id]?.difficulty || "Default"} diffColor={diffColor} setDifficulty={setDifficulty} />
@@ -1098,11 +1098,11 @@ function Flashcards({ words, progress, settings, setDifficulty, markCorrect, mar
 
       {isWriting && !isReview && !flipped && (
         <div style={{ marginTop:16 }}>
-          <PracticeField correctAnswer={isDE_first ? word.de : word.en} isDE={isDE_first} onCorrect={() => setFlipped(true)} onNext={next} />
+          <PracticeField info={word.info} correctAnswer={isDE_first ? word.de : word.en} isDE={isDE_first} onCorrect={() => setFlipped(true)} onNext={next} />
         </div>
       )}
       {flipped && !isReview && (
-        <PracticeField correctAnswer={isDE_first ? word.en : word.de} isDE={!isDE_first} onNext={next} />
+        <PracticeField info={word.info} correctAnswer={isDE_first ? word.en : word.de} isDE={!isDE_first} onNext={next} />
       )}
       {flipped && (
         <div style={{ marginTop:16 }}>
@@ -1190,7 +1190,7 @@ function Dictionary({ words, progress, setDifficulty }) {
 }
 
 // ── UpdateProgress ────────────────────────────────────────────────────────
-function UpdateProgress({ introducedCount, taughtTodayCount, streak, onUpdateProgress, streakThreshold, onSaveStreakThreshold, intervals, onSaveIntervals }) {
+function UpdateProgress({ introducedCount, taughtTodayCount, streak, onUpdateProgress, streakThreshold, onSaveStreakThreshold, intervals, onSaveIntervals, requireArticle, onSaveRequireArticle }) {
   const iv = intervals || { Hard:1, Default:3, Easy:7 };
   const [pTaught, setPTaught] = useState(String(introducedCount));
   const [pToday, setPToday] = useState(String(taughtTodayCount));
@@ -1258,6 +1258,15 @@ function UpdateProgress({ introducedCount, taughtTodayCount, streak, onUpdatePro
             </div>
           ))}
         </div>
+        {/* Articles of German nouns */}
+        <div style={{ fontSize:13, fontWeight:600, color:"var(--text)", margin:"16px 0 8px" }}>Articles of nouns</div>
+        <label style={{ display:"flex", alignItems:"center", gap:10, fontSize:14, color:"var(--text)", cursor:"pointer", marginBottom:6 }}>
+          <input type="checkbox" checked={!!requireArticle} onChange={e => onSaveRequireArticle(e.target.checked)} style={{ width:16, height:16 }} />
+          Require the article when typing a German noun (das Haus)
+        </label>
+        <p style={{ fontSize:11, color:"var(--text2)", marginBottom:10, lineHeight:1.5 }}>
+          Off: "Haus" and "das Haus" are both correct. On: "Haus" without its article is a mistake. A wrong article ("der Haus") is always a mistake. The change applies immediately.
+        </p>
         {/* Review intervals */}
         <div style={{ fontSize:13, fontWeight:600, color:"var(--text)", margin:"16px 0 8px" }}>Review intervals (days)</div>
         <p style={{ fontSize:11, color:"var(--text2)", marginBottom:10, lineHeight:1.5 }}>
@@ -1466,11 +1475,26 @@ function VocabSettings({ loadVocabFromUrl, vocabStatus, vocabError, wordCount })
 
 // ── Answer checking ───────────────────────────────────────────────────────
 // German: exact spelling, capital letters included (nouns!). "der/die/das" accepts any of its parts or the whole.
+//         A noun may be typed with its article ("das Haus"); a wrong article is always a mistake.
+//         Setting "requireArticle" (Update progress page): the noun without its article is a mistake too.
 // English: any one of the meanings on the card is enough: "to go, to walk" accepts "go", "to walk", ...
-function checkAnswer(input, answer, isGerman) {
+function articleRequired() { return !!loadSettings().requireArticle; }
+function expectedGerman(answer, info) {   // what the learner is asked to type: "das Haus" when articles are required
+  const articles = nounArticles(info);
+  return articles.length && articleRequired() && answer !== "der/die/das" ? articles.join("/") + " " + answer : answer;
+}
+function nounArticles(info) {          // "n. — das Haus, pl. Häuser" -> ["das"];  "n. — der/die Jugendliche, …" -> ["der","die"]
+  const m = /^n\.(?: pl\.)? — ((?:der|die|das)(?:\/(?:der|die|das))*) /.exec(info || "");
+  return m ? m[1].split("/") : [];
+}
+function checkAnswer(input, answer, isGerman, info) {
   const typed = input.trim().replace(/\s+/g, " ");
   if (!typed) return false;
   if (isGerman) {
+    const articles = nounArticles(info);
+    const m = /^(der|die|das) (.+)$/.exec(typed);
+    if (articles.length && m && answer !== "der/die/das") return articles.includes(m[1]) && m[2] === answer;
+    if (articles.length && articleRequired() && answer !== "der/die/das") return false;
     if (typed === answer) return true;
     return answer.includes("/") && answer.split("/").map(a => a.trim()).includes(typed);
   }
@@ -1482,7 +1506,7 @@ function checkAnswer(input, answer, isGerman) {
 
 // ── PracticeField ─────────────────────────────────────────────────────────
 const DE_CHARS_PRACTICE = ["ä","ö","ü","ß","Ä","Ö","Ü"];
-function PracticeField({ correctAnswer, isDE, onCorrect, onNext }) {
+function PracticeField({ correctAnswer, isDE, info, onCorrect, onNext }) {
   const [val, setVal] = useState("");
   const [lastAttempt, setLastAttempt] = useState(null); // { text, ok }
   const inputRef = useRef(null);
@@ -1494,7 +1518,7 @@ function PracticeField({ correctAnswer, isDE, onCorrect, onNext }) {
 
   function check() {
     if (!val.trim()) return;
-    const ok = checkAnswer(val, correctAnswer, isDE);
+    const ok = checkAnswer(val, correctAnswer, isDE, info);
     setLastAttempt({ text: val, ok });
     setVal("");
     if (ok && onCorrect) onCorrect();
@@ -1523,7 +1547,7 @@ function PracticeField({ correctAnswer, isDE, onCorrect, onNext }) {
       <div style={{ display:"flex", gap:6, alignItems:"center" }}>
         <input ref={inputRef} value={val} onChange={e => setVal(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={lastAttempt?.ok ? "Keep practising…" : `Type "${correctAnswer}"…`}
+          placeholder={lastAttempt?.ok ? "Keep practising…" : `Type "${isDE ? expectedGerman(correctAnswer, info) : correctAnswer}"…`}
           style={{ flex:1, padding:"6px 10px", borderRadius:6, border:"1px solid var(--border)", fontSize:13, outline:"none" }} />
         <button onClick={check} style={{ padding:"6px 12px", background:"var(--accent)", color:"#fff", border:"none", borderRadius:6, fontSize:12 }}>Check</button>
       </div>
@@ -1564,7 +1588,7 @@ function WritingCard({ word, idx, total, isDE_first, prog, curDiff, diffColor, o
 
   function check() {
     if (!input.trim() && !isLearn) return;
-    const isCorrect = checkAnswer(input, answerText, !isDE_first);
+    const isCorrect = checkAnswer(input, answerText, !isDE_first, word.info);
     setCorrect(isCorrect);
     setChecked(true);
     if (isCorrect && !isLearn) markCorrect(word.id);
@@ -1675,7 +1699,7 @@ function WritingCard({ word, idx, total, isDE_first, prog, curDiff, diffColor, o
                   {!isDE_first && <SpeakBtn text={answerText} style={{ fontSize:16 }} />}
                 </div>
                 {!isDE_first && <div style={{ fontSize:13, color:"var(--text2)", fontStyle:"italic", marginTop:4 }}>[{word.pron}]</div>}
-                <PracticeField correctAnswer={answerText} isDE={!isDE_first} onNext={onNext} />
+                <PracticeField info={word.info} correctAnswer={answerText} isDE={!isDE_first} onNext={onNext} />
               </div>
             )}
             <div style={{ fontSize:13, color:"var(--text2)", fontStyle:"italic", marginTop:6 }}>{answerSentence}</div>

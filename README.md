@@ -10,6 +10,8 @@ The words are ordered by level (A1 → B2) and, inside each level, by how often 
 The app is the German sister of [Mon Vocab](https://github.com/Jana-DADS/french-vocab-data) and shares its features:
 flashcards, writing practice, spaced repetition, filters by level and topic, pronunciation, automatic vocabulary updates.
 German specifics: capital letters count when you type a German word, and buttons for ä ö ü ß Ä Ö Ü are next to the input field.
+A noun can be typed with its article (`das Haus`); a wrong article counts as a mistake. On the Update Progress page you can
+make the article compulsory.
 
 ## CSV structure (`german_vocab.csv`)
 

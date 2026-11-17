@@ -1,15 +1,17 @@
 {
   "vocab": {
     "version": "1.0",
-    "date": "2026-11-16",
+    "date": "2026-11-17",
     "wordCount": 5000,
     "description": "First release: 5000 German words ordered by level and frequency"
   },
   "app": {
-    "version": "1.0.0",
-    "date": "2026-11-16",
+    "version": "1.0.2",
+    "date": "2026-11-17",
     "changes": [
-      "First release of Mein Wortschatz"
+      "First release of Mein Wortschatz",
+      "German nouns can be typed with their article (das Haus); a wrong article counts as a mistake",
+      "New setting on the Update Progress page: require the article when typing a German noun"
     ]
   }
 }
