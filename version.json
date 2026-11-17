@@ -6,12 +6,19 @@
     "description": "First release: 5000 German words ordered by level and frequency"
   },
   "app": {
-    "version": "1.0.2",
+    "version": "1.1.1",
     "date": "2026-11-17",
     "changes": [
       "First release of Mein Wortschatz",
+      "Phone layout: on a narrow screen the menu slides in with the ☰ button and closes with ✕, a tap outside or by choosing a page",
+      "Phone layout: bigger buttons, the dictionary shows each word as a card, the app can be added to the home screen (icon: the German flag)",
+      "Update Progress page: note that progress is saved per device and is not shared between phone and computer",
       "German nouns can be typed with their article (das Haus); a wrong article counts as a mistake",
-      "New setting on the Update Progress page: require the article when typing a German noun"
+      "New setting on the Update Progress page: require the article when typing a German noun",
+      "Fixed labels that still said FR (sidebar, dictionary table and search)",
+      "Removed the flag in front of the app name",
+      "After a wrong answer the correct German noun is always shown with its article (die Ordnung)",
+      "The hint about a missing German voice disappears when the browser finds a German voice"
     ]
   }
 }
