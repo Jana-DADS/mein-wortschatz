@@ -6,10 +6,11 @@
     "description": "First release: 5000 German words ordered by level and frequency"
   },
   "app": {
-    "version": "1.1.1",
+    "version": "1.2.0",
     "date": "2026-11-17",
     "changes": [
       "First release of Mein Wortschatz",
+      "New page About & Licence (menu, Settings): sources of the vocabulary and the licence",
       "Phone layout: on a narrow screen the menu slides in with the ☰ button and closes with ✕, a tap outside or by choosing a page",
       "Phone layout: bigger buttons, the dictionary shows each word as a card, the app can be added to the home screen (icon: the German flag)",
       "Update Progress page: note that progress is saved per device and is not shared between phone and computer",

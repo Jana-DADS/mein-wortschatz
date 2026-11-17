@@ -12,6 +12,8 @@ flashcards, writing practice, spaced repetition, filters by level and topic, pro
 German specifics: capital letters count when you type a German word, and buttons for ä ö ü ß Ä Ö Ü are next to the input field.
 A noun can be typed with its article (`das Haus`); a wrong article counts as a mistake. On the Update Progress page you can
 make the article compulsory.
+On a phone the menu hides behind the ☰ button and the app can be added to the home screen. Progress is saved in the browser
+of each device separately.
 
 ## CSV structure (`german_vocab.csv`)
 
@@ -48,6 +50,7 @@ make the article compulsory.
   [Claude](https://claude.ai) (Anthropic) together with the project author
 
 Because Wiktionary and FrequencyWords are share-alike sources, `german_vocab.csv` is published under **CC BY-SA 4.0**.
+The app itself (`index.html`: code and design) is © 2026 Jana Dolečková, all rights reserved. See [LICENSE.md](LICENSE.md).
 
 ## Versioning
 

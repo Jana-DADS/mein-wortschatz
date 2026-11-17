@@ -95,7 +95,7 @@ const PAIR_MODES = ["EN → DE","DE → EN"];
 
 const DEFAULT_VOCAB_URL = "https://raw.githubusercontent.com/Jana-DADS/mein-wortschatz/main/german_vocab.csv";
 const VERSION_JSON_URL = "https://raw.githubusercontent.com/Jana-DADS/mein-wortschatz/main/dev/version.json";
-const APP_VERSION = "1.1.1";
+const APP_VERSION = "1.2.0";
 // Reset stats on new version
 (function() {
   localStorage.setItem("deAppVersion", APP_VERSION);
@@ -507,6 +507,7 @@ function App() {
             {view==="dictionary" && <Dictionary words={words} progress={progress} setDifficulty={setDifficulty} />}
             {view==="update-progress" && <UpdateProgress introducedCount={introducedCount} taughtTodayCount={taughtTodayCount} streak={streak} streakThreshold={settings.streakThreshold || 10} intervals={settings.intervals || { Hard:1, Default:3, Easy:7 }} onUpdateProgress={handleUpdateProgress} onSaveStreakThreshold={(v) => setSettings(s => ({...s, streakThreshold: v}))} onSaveIntervals={(iv) => setSettings(s => ({...s, intervals: iv}))} requireArticle={!!settings.requireArticle} onSaveRequireArticle={(v) => setSettings(s => ({...s, requireArticle: v}))} />}
             {view==="webpages"    && <WebPages webPages={webPages} saveWebPages={saveWebPages} />}
+            {view==="about"       && <About />}
             {view==="upload"     && <VocabSettings loadVocabFromUrl={loadVocabFromUrl} vocabStatus={vocabStatus} vocabError={vocabError} wordCount={words.length} />}
           </div>
         </div>
@@ -623,6 +624,7 @@ function Sidebar({ view, setView, words, progress, introducedCount, taughtTodayC
           { key:"update-progress", icon:"🎯", label:"Update Progress" },
           { key:"upload",          icon:"📤", label:"Upload Vocabulary" },
           { key:"webpages",        icon:"🌐", label:"Web Pages" },
+          { key:"about",           icon:"ℹ️", label:"About & Licence" },
         ].map(item => (
           <button key={item.key} onClick={() => setView(item.key)} style={{
             display:"flex", alignItems:"center", gap:8, width:"100%", padding:"4px 8px",
@@ -1448,6 +1450,31 @@ function WebPages({ webPages, saveWebPages }) {
           borderRadius:10, fontSize:14, color:"var(--text2)", cursor:"pointer", width:"100%"
         }}>+ Add link</button>
       )}
+    </div>
+  );
+}
+
+// ── About & Licence ────────────────────────────────────────────────────────
+function About() {
+  const h = { fontSize:15, fontWeight:600, color:"var(--text)", margin:"20px 0 8px" };
+  const p = { fontSize:14, color:"var(--text)", lineHeight:1.7 };
+  const a = { color:"var(--accent)" };
+  return (
+    <div style={{ maxWidth:620 }}>
+      <h2 style={{ fontSize:22, marginBottom:12, color:"var(--text)", fontFamily:"'Lora',serif" }}>About & Licence</h2>
+      <div style={{ background:"var(--surface)", border:"1px solid var(--border)", borderRadius:12, padding:"20px 24px" }}>
+        <p style={p}>Mein Wortschatz is a free app for learning the 5,000 most useful German words. It was created by Jana Dolečková with the help of Claude (Anthropic).</p>
+        <div style={h}>Where the vocabulary comes from</div>
+        <ul style={{ ...p, paddingLeft:20 }}>
+          <li>Translations, pronunciation and grammar information: <a style={a} href="https://en.wiktionary.org/" target="_blank" rel="noopener noreferrer">Wiktionary</a>, via <a style={a} href="https://kaikki.org/" target="_blank" rel="noopener noreferrer">kaikki.org</a> (CC BY-SA 4.0), reviewed and edited.</li>
+          <li>Example sentences: <a style={a} href="https://tatoeba.org/" target="_blank" rel="noopener noreferrer">Tatoeba</a> (CC BY 2.0 FR); a small number were written for this app.</li>
+          <li>Word frequency: OpenSubtitles word list <a style={a} href="https://github.com/hermitdave/FrequencyWords" target="_blank" rel="noopener noreferrer">FrequencyWords</a> by Hermit Dave (CC BY-SA 4.0) and the <a style={a} href="https://wortschatz.uni-leipzig.de/en/download" target="_blank" rel="noopener noreferrer">Leipzig Corpora Collection</a> (CC BY 4.0).</li>
+          <li>Levels A1–B1 follow the word lists of the Goethe-Institut; the remaining levels were assigned by frequency.</li>
+        </ul>
+        <div style={h}>Licence</div>
+        <p style={p}><strong>The vocabulary</strong> (german_vocab.csv) is published under the <a style={a} href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">Creative Commons Attribution-ShareAlike 4.0</a> licence (CC BY-SA 4.0). You may use and adapt it if you name the sources above and share your version under the same licence.</p>
+        <p style={{ ...p, marginTop:8 }}><strong>The app</strong> (its code and design) is © 2026 Jana Dolečková. All rights reserved.</p>
+      </div>
     </div>
   );
 }
