@@ -1,0 +1,15 @@
+{
+  "vocab": {
+    "version": "1.0",
+    "date": "2026-11-16",
+    "wordCount": 5000,
+    "description": "First release: 5000 German words ordered by level and frequency"
+  },
+  "app": {
+    "version": "1.0.0",
+    "date": "2026-11-16",
+    "changes": [
+      "First release of Mein Wortschatz"
+    ]
+  }
+}
