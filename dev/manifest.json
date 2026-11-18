@@ -1,6 +1,6 @@
 {
-  "name": "Mon Vocab DEV",
-  "short_name": "Mon Vocab DEV",
+  "name": "Mein Wortschatz DEV",
+  "short_name": "Wortschatz DEV",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

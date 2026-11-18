@@ -6,11 +6,11 @@
   <meta name="theme-color" content="#1a4b3c" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="Mon Vocab" />
+  <meta name="apple-mobile-web-app-title" content="Wortschatz" />
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icon-192.png" />
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <title>&#127467;&#127479; Mon Vocab [DEV]</title>
+  <title>Mein Wortschatz [DEV]</title>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -38,28 +38,28 @@ function computeLevel(progress, words) {
   // A level is finished when every word of that level has been taught
   const taughtIds = new Set(Object.keys(progress).map(Number));
   const done = lv => { const ws = words.filter(w => w.level === lv); return ws.length > 0 && ws.every(w => taughtIds.has(w.id)); };
-  const order = ["A1","A2","B1","B2","C1","C2"];
-  let n = 0;
-  while (n < order.length - 1 && done(order[n])) n++;
-  return order[n];
+  if (done("A1") && done("A2") && done("B1")) return "B2";
+  if (done("A1") && done("A2")) return "B1";
+  if (done("A1")) return "A2";
+  return "A1";
 }
-function speakFrench(text) {
+function speakGerman(text) {
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
   const utt = new SpeechSynthesisUtterance(text);
-  utt.lang = "fr-FR";
+  utt.lang = "de-DE";
   utt.rate = 0.9;
   window.speechSynthesis.speak(utt);
 }
 
-function hasFrenchVoice() {
+function hasGermanVoice() {
   if (!window.speechSynthesis) return false;
-  return window.speechSynthesis.getVoices().some(v => v.lang.startsWith("fr"));
+  return window.speechSynthesis.getVoices().some(v => v.lang.startsWith("de"));
 }
 
 function SpeakBtn({ text, style }) {
   return (
-    <button onClick={e => { e.stopPropagation(); speakFrench(text); }}
+    <button onClick={e => { e.stopPropagation(); speakGerman(text); }}
       title="Listen"
       style={{ background:"none", border:"none", cursor:"pointer", padding:"0 4px", fontSize:15, lineHeight:1, color:"var(--accent2)", opacity:0.8, transition:"opacity 0.15s", ...style }}
       onMouseEnter={e => e.currentTarget.style.opacity=1}
@@ -69,10 +69,10 @@ function SpeakBtn({ text, style }) {
   );
 }
 
-function FrenchVoiceHint() {
+function GermanVoiceHint() {
   const [show, setShow] = useState(false);
   useEffect(() => {
-    function check() { if (!hasFrenchVoice()) setShow(true); }
+    function check() { setShow(!hasGermanVoice()); }
     check();
     window.speechSynthesis.addEventListener("voiceschanged", check);
     return () => window.speechSynthesis.removeEventListener("voiceschanged", check);
@@ -80,7 +80,7 @@ function FrenchVoiceHint() {
   if (!show) return null;
   return (
     <div style={{ background:"#fffbea", border:"1px solid var(--accent2)", borderRadius:8, padding:"8px 14px", fontSize:12, color:"var(--text2)", display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, margin:"0 0 12px" }}>
-      <span>🔊 For French pronunciation, install a French voice in your system settings.</span>
+      <span>🔊 For German pronunciation, install a German voice in your system settings.</span>
       <button onClick={() => setShow(false)} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--text2)", fontSize:16, lineHeight:1 }}>×</button>
     </div>
   );
@@ -89,69 +89,62 @@ function FrenchVoiceHint() {
 
 
 
-const LEVELS = ["All","A1","A2","B1","B2","C1","C2"];
-const CATEGORIES = ["All","Grammar","Greetings","Family","Food & Drink","Time","Travel","Shopping","Work","Body & Health","Nature","Home","Emotions","Animals","Arts","Education","Geography","Language","People","Sport","Technology","Verbs","Adjectives","Colors","Numbers","General"];
-const PAIR_MODES = ["EN → FR","FR → EN"];
+const LEVELS = ["All","A1","A2","B1","B2"];
+const CATEGORIES = ["All","Greetings","Family","Food & Drink","Time","Travel","Shopping","Work","Body & Health","Nature","Home","Emotions","Animals","Arts","Education","Geography","Language","People","Sport","Technology","Verbs","Adjectives","Colors","Numbers","General"];
+const PAIR_MODES = ["EN → DE","DE → EN"];
 
-const DEFAULT_VOCAB_URL = "https://raw.githubusercontent.com/Jana-DADS/french-vocab-data/main/french_vocab.csv";
-const VERSION_JSON_URL = "https://raw.githubusercontent.com/Jana-DADS/french-vocab-data/main/dev/version.json";
-const APP_VERSION = "3.0.0";
+const DEFAULT_VOCAB_URL = "https://raw.githubusercontent.com/Jana-DADS/mein-wortschatz/main/german_vocab.csv";
+const VERSION_JSON_URL = "https://raw.githubusercontent.com/Jana-DADS/mein-wortschatz/main/dev/version.json";
+const APP_VERSION = "1.4.0";
 // Reset stats on new version
 (function() {
-  localStorage.setItem("frAppVersion", APP_VERSION);
+  localStorage.setItem("deAppVersion", APP_VERSION);
 })();
 
-// ── Dictionary: by frequency (default) or by level ─────────────────────────
-// Both use the same vocabulary file. Each keeps its own progress: the keys of the level dictionary end in "Level".
-const DICT = (function() { try { return localStorage.getItem("frDictionary") === "level" ? "level" : "freq"; } catch { return "freq"; } })();
-function dk(key) { return DICT === "level" ? key + "Level" : key; }
-function ord(w) { return (DICT === "level" ? w.order_level : w.order_freq) || w.id; }   // learning order of a word
-const ORDER_LABEL = DICT === "level" ? "A1 → C2" : "By Frequency";
-
 // ── localStorage ───────────────────────────────────────────────────────────
-function loadProgress() { try { return JSON.parse(localStorage.getItem(dk("frProgress"))||"{}"); } catch { return {}; } }
-function saveProgress(p) { try { localStorage.setItem(dk("frProgress"),JSON.stringify(p)); } catch {} }
+function loadProgress() { try { return JSON.parse(localStorage.getItem("deProgress")||"{}"); } catch { return {}; } }
+function saveProgress(p) { try { localStorage.setItem("deProgress",JSON.stringify(p)); } catch {} }
 function loadDailyReview() {
   try {
-    const d = JSON.parse(localStorage.getItem(dk("frDailyReview")) || "{}");
+    const d = JSON.parse(localStorage.getItem("deDailyReview") || "{}");
     const today = new Date().toDateString();
     if (d.date !== today) return { correct: 0, total: 0, date: today };
     return d;
   } catch { return { correct: 0, total: 0, date: new Date().toDateString() }; }
 }
-function saveDailyReview(d) { try { localStorage.setItem(dk("frDailyReview"), JSON.stringify(d)); } catch {} }
-function loadSettings() { try { return JSON.parse(localStorage.getItem("frSettings")||"{}"); } catch { return {}; } }
-function saveSettings(s) { try { localStorage.setItem("frSettings",JSON.stringify(s)); } catch {} }
-function loadVocab() { try { return JSON.parse(localStorage.getItem("frVocab")||"null"); } catch { return null; } }
-function saveVocab(v) { try { localStorage.setItem("frVocab",JSON.stringify(v)); localStorage.setItem("frVocabLoaded", new Date().toISOString()); } catch {} }
-function loadVocabMeta() { return { url: localStorage.getItem("frVocabUrl")||"", loaded: localStorage.getItem("frVocabLoaded")||"" }; }
-function saveVocabUrl(url) { localStorage.setItem("frVocabUrl", url); }
-function loadVocabVersion() { return localStorage.getItem("frVocabVersion") || ""; }
-function saveVocabVersion(v) { localStorage.setItem("frVocabVersion", v); }
-function loadLastSeenAppVersion() { return localStorage.getItem("frLastSeenAppVersion") || ""; }
-function saveLastSeenAppVersion(v) { localStorage.setItem("frLastSeenAppVersion", v); }
-function loadLastNewWordId() { try { return parseInt(localStorage.getItem(dk("frLastNewWordId"))||"0"); } catch { return 0; } }
-function saveLastNewWordId(id) { try { localStorage.setItem(dk("frLastNewWordId"), String(id)); } catch {} }
+function saveDailyReview(d) { try { localStorage.setItem("deDailyReview", JSON.stringify(d)); } catch {} }
+function loadSettings() { try { return JSON.parse(localStorage.getItem("deSettings")||"{}"); } catch { return {}; } }
+function saveSettings(s) { try { localStorage.setItem("deSettings",JSON.stringify(s)); } catch {} }
+function loadVocab() { try { return JSON.parse(localStorage.getItem("deVocab")||"null"); } catch { return null; } }
+function saveVocab(v) { try { localStorage.setItem("deVocab",JSON.stringify(v)); localStorage.setItem("deVocabLoaded", new Date().toISOString()); } catch {} }
+function loadVocabMeta() { return { url: localStorage.getItem("deVocabUrl")||"", loaded: localStorage.getItem("deVocabLoaded")||"" }; }
+function saveVocabUrl(url) { localStorage.setItem("deVocabUrl", url); }
+function loadVocabVersion() { return localStorage.getItem("deVocabVersion") || ""; }
+function saveVocabVersion(v) { localStorage.setItem("deVocabVersion", v); }
+function loadLastSeenAppVersion() { return localStorage.getItem("deLastSeenAppVersion") || ""; }
+function saveLastSeenAppVersion(v) { localStorage.setItem("deLastSeenAppVersion", v); }
+function loadLastNewWordId() { try { return parseInt(localStorage.getItem("deLastNewWordId")||"0"); } catch { return 0; } }
+function saveLastNewWordId(id) { try { localStorage.setItem("deLastNewWordId", String(id)); } catch {} }
 function loadTaughtToday() {
   try {
-    const data = JSON.parse(localStorage.getItem(dk("frTaughtToday"))||"{}");
+    const data = JSON.parse(localStorage.getItem("deTaughtToday")||"{}");
     const today = new Date().toDateString();
     if (data.date !== today) return { date: today, count: 0 };
     return data;
   } catch { return { date: new Date().toDateString(), count: 0 }; }
 }
-function saveTaughtToday(data) { try { localStorage.setItem(dk("frTaughtToday"), JSON.stringify(data)); } catch {} }
-function loadStreak() { try { return JSON.parse(localStorage.getItem(dk("frStreak"))||"{}"); } catch { return {}; } }
-function saveStreak(s) { try { localStorage.setItem(dk("frStreak"), JSON.stringify(s)); } catch {} }
+function saveTaughtToday(data) { try { localStorage.setItem("deTaughtToday", JSON.stringify(data)); } catch {} }
+function loadStreak() { try { return JSON.parse(localStorage.getItem("deStreak")||"{}"); } catch { return {}; } }
+function saveStreak(s) { try { localStorage.setItem("deStreak", JSON.stringify(s)); } catch {} }
 function loadReviewedToday() {
   try {
-    const d = JSON.parse(localStorage.getItem(dk("frReviewedToday"))||"null");
+    const d = JSON.parse(localStorage.getItem("deReviewedToday")||"null");
     const today = new Date().toDateString();
     if (!d || d.date !== today) return { date: today, ids: [] };
     return d;
   } catch { return { date: new Date().toDateString(), ids: [] }; }
 }
-function saveReviewedToday(d) { try { localStorage.setItem(dk("frReviewedToday"), JSON.stringify(d)); } catch {} }
+function saveReviewedToday(d) { try { localStorage.setItem("deReviewedToday", JSON.stringify(d)); } catch {} }
 
 // ── CSV parser ─────────────────────────────────────────────────────────────
 function parseCSV(text) {
@@ -184,22 +177,18 @@ function parseCSV(text) {
     // Normalize fields
     words.push({
       id: obj.id ? parseInt(obj.id) : i,
-      fr: obj.fr || "",
+      de: obj.de || "",
       pron: obj.pron || "",
       info: obj.info || "-",
       en: obj.en || obj["EN translation"] || "",
-      fr_sentence: obj.fr_sentence || obj["Fr sentence"] || "",
+      de_sentence: obj.de_sentence || "",
       en_sentence: obj.en_sentence || obj["EN sentence"] || "",
       level: obj.level || "A1",
       category: obj.category || "General",
       difficulty: parseFloat(obj.difficulty) || 2.5,
-      alt: obj.alt ? obj.alt.split("|") : [],                 // other accepted spellings
-      order_freq: parseInt(obj.order_freq) || 0,
-      order_level: parseInt(obj.order_level) || 0,
-      added: obj.added || "",                                 // vocabulary version that added the word
     });
   }
-  return words.filter(w => w.fr && w.en);
+  return words.filter(w => w.de && w.en);
 }
 
 async function fetchVocabFromUrl(url) {
@@ -216,13 +205,13 @@ function App() {
   const [progress, setProgress] = useState(loadProgress);
   const [dailyReview, setDailyReview] = useState(loadDailyReview);
   const [settings, setSettings] = useState(() => ({
-    pairMode: "FR → EN", filterMode: "frequency", filterCategory: "All",
+    pairMode: "DE → EN", filterMode: "frequency", filterCategory: "All",
     filterLevel: "All", sessionCount: 20, reviewCount: 20,
-    learnPairMode: "FR → EN", reviewPairMode: "FR → EN",
+    learnPairMode: "DE → EN", reviewPairMode: "DE → EN",
     learnFilterMode: "frequency", learnFilterCategory: "All",
     reviewFilterMode: "frequency", reviewFilterCategory: "All", reviewFilterLevel: "All",
     learnSessionMode: "flashcards", reviewSessionMode: "flashcards",
-    userName: "Marie",
+    userName: "Anna",
     intervals: { Hard: 1, Default: 3, Easy: 7 },
     ...loadSettings()
   }));
@@ -339,22 +328,22 @@ function App() {
   const [sessionStartKey, setSessionStartKey] = useState(0);
 
   const DEFAULT_WEB_PAGES = [
-    { id:1, name:"Ask French Assistant", url:"https://claude.ai" },
-    { id:2, name:"Linguee",              url:"https://www.linguee.com/french-english" },
-    { id:3, name:"Reverso Context",      url:"https://context.reverso.net/translation/french-english" },
-    { id:4, name:"WordReference",        url:"https://www.wordreference.com/fren/" },
-    { id:5, name:"Larousse",             url:"https://www.larousse.fr/dictionnaires/francais" },
-    { id:6, name:"Bescherelle",          url:"https://bescherelle.com" },
-    { id:7, name:"RFI Savoirs",          url:"https://savoirs.rfi.fr" },
+    { id:1, name:"Ask German Assistant", url:"https://claude.ai" },
+    { id:2, name:"Linguee",              url:"https://www.linguee.com/german-english" },
+    { id:3, name:"Reverso Context",      url:"https://context.reverso.net/translation/german-english" },
+    { id:4, name:"LEO",                  url:"https://dict.leo.org/german-english/" },
+    { id:5, name:"Duden",                url:"https://www.duden.de" },
+    { id:6, name:"DWDS",                 url:"https://www.dwds.de" },
+    { id:7, name:"DW Learn German",      url:"https://learngerman.dw.com" },
   ];
   const [webPages, setWebPages] = useState(() => {
     try {
-      const stored = JSON.parse(localStorage.getItem("frWebPages") || "null");
+      const stored = JSON.parse(localStorage.getItem("deWebPages") || "null");
       return stored || DEFAULT_WEB_PAGES;
     } catch { return DEFAULT_WEB_PAGES; }
   });
   function saveWebPages(pages) {
-    try { localStorage.setItem("frWebPages", JSON.stringify(pages)); } catch {}
+    try { localStorage.setItem("deWebPages", JSON.stringify(pages)); } catch {}
     setWebPages(pages);
   }
 
@@ -403,16 +392,8 @@ function App() {
   const learnedCount    = learntCount;
   const userLevel       = computeLevel(progress, words);
 
-  function skipAdded(ids) {                       // mark words added to the vocabulary as taught, without studying them
-    setProgress(p => {
-      const np = { ...p };
-      ids.forEach(id => { if (!np[id]) np[id] = { difficulty:"Default", nextReview:computeNextReview("Default", settings.intervals), lastSeen:new Date().toISOString(), easyCount:0, correctCount:0 }; });
-      return np;
-    });
-  }
-
   function handleUpdateProgress(t, td, l, s) {
-    const sorted = [...words].sort((a, b) => ord(a) - ord(b));
+    const sorted = [...words].sort((a, b) => a.id - b.id);
     const newProg = {};
     for (let i = 0; i < Math.min(t, sorted.length); i++) {
       const w = sorted[i];
@@ -480,13 +461,23 @@ function App() {
           .mw-dict td:nth-child(2) { font-size:17px; padding-right:48px !important; }
           .mw-dict td:nth-child(7), .mw-dict td:nth-child(8) { display:inline-block; margin:4px 8px 0 0; }
         }
+        .mw-kb { display:none; }
+        @media (max-width: 760px) {
+          .mw-kb { display:block; position:fixed; left:0; right:0; bottom:0; z-index:900; background:#d8dde3; padding:5px 3px calc(8px + env(safe-area-inset-bottom)); box-shadow:0 -2px 8px rgba(0,0,0,0.15); }
+          .mw-krow { display:flex; gap:4px; margin:5px 0; }
+          .mw-key { flex:1; min-width:0; height:42px; border:none; border-radius:7px; background:#fff; color:var(--text); font-size:18px; font-family:'DM Sans',sans-serif; box-shadow:0 1px 0 #999; padding:0; touch-action:manipulation; -webkit-user-select:none; user-select:none; }
+          .mw-key:active { filter:brightness(0.85); }
+          body.mw-kb-open .mw-links { display:none !important; }
+          body.mw-kb-open .mw-main { padding-bottom:270px !important; }
+        }
       `}</style>
 
       <div className="mw-topbar">
         <button onClick={() => setMenuOpen(true)} aria-label="Open menu">☰</button>
-        <span>Mon Vocab</span>
+        <span>Mein Wortschatz</span>
       </div>
       <div className="mw-overlay" onClick={() => setMenuOpen(false)} />
+      <AppKeyboard />
       <button className="mw-close" onClick={() => setMenuOpen(false)} aria-label="Close menu">✕</button>
       <div style={{ display:"flex", flexDirection:"column", flex:1, minHeight:0 }}>
         <div className="mw-shell" style={{ display:"flex", alignItems:"flex-start", padding:"28px 32px 0 0", height:"calc(100vh - 52px)" }}>
@@ -524,8 +515,8 @@ function App() {
           {view==="dashboard"  && words.length > 0 && <Dashboard words={words} progress={progress} settings={settings} setSettings={setSettings} introducedWords={introducedWords} newWords={newWords} learnedCount={learnedCount} streak={streak} setView={setView} userName={settings.userName} setSessionStartKey={setSessionStartKey} />}
             {view==="flashcards" && <Flashcards key={sessionStartKey} words={words} progress={progress} settings={settings} setDifficulty={setDifficulty} markCorrect={markCorrect} markWrong={markWrong} markIntroduced={markIntroduced} incrementTaughtToday={incrementTaughtToday} incrementDailyReview={incrementDailyReview} setView={setView} introducedWords={introducedWords} lastNewWordId={lastNewWordId} setLastNewWordId={setLastNewWordId} />}
             {view==="dictionary" && <Dictionary words={words} progress={progress} setDifficulty={setDifficulty} />}
-            {view==="update-progress" && <DictionaryChoice words={words} progress={progress} onSkipAdded={skipAdded} />}
-            {view==="update-progress" && <UpdateProgress introducedCount={introducedCount} taughtTodayCount={taughtTodayCount} streak={streak} streakThreshold={settings.streakThreshold || 10} intervals={settings.intervals || { Hard:1, Default:3, Easy:7 }} onUpdateProgress={handleUpdateProgress} onSaveStreakThreshold={(v) => setSettings(s => ({...s, streakThreshold: v}))} onSaveIntervals={(iv) => setSettings(s => ({...s, intervals: iv}))} />}
+            {view==="update-progress" && <KeyboardChoice value={settings.appKeyboard} onChange={v => setSettings(s => ({ ...s, appKeyboard: v }))} />}
+            {view==="update-progress" && <UpdateProgress introducedCount={introducedCount} taughtTodayCount={taughtTodayCount} streak={streak} streakThreshold={settings.streakThreshold || 10} intervals={settings.intervals || { Hard:1, Default:3, Easy:7 }} onUpdateProgress={handleUpdateProgress} onSaveStreakThreshold={(v) => setSettings(s => ({...s, streakThreshold: v}))} onSaveIntervals={(iv) => setSettings(s => ({...s, intervals: iv}))} requireArticle={!!settings.requireArticle} onSaveRequireArticle={(v) => setSettings(s => ({...s, requireArticle: v}))} />}
             {view==="webpages"    && <WebPages webPages={webPages} saveWebPages={saveWebPages} />}
             {view==="about"       && <About />}
             {view==="upload"     && <VocabSettings loadVocabFromUrl={loadVocabFromUrl} vocabStatus={vocabStatus} vocabError={vocabError} wordCount={words.length} />}
@@ -585,8 +576,8 @@ function Sidebar({ view, setView, words, progress, introducedCount, taughtTodayC
     <aside className="mw-sidebar" style={{ width:200, background:"var(--sidebar)", display:"flex", flexDirection:"column", padding:"12px 10px 24px", flexShrink:0, alignSelf:"stretch", borderRadius:"0 0 14px 0", overflowY:"auto" }}>
       {/* Logo */}
       <div style={{ padding:"0 6px 10px", borderBottom:"1px solid rgba(255,255,255,0.1)", marginBottom:8 }}>
-        <div style={{ color:"#fff", fontFamily:"'Lora',serif", fontSize:16, fontWeight:600 }}>🇫🇷 Mon Vocab</div>
-        <div style={{ color:"var(--accent2)", fontSize:10, marginTop:1 }}>FR · EN · {DICT === "level" ? "by level" : "by frequency"}</div>
+        <div style={{ color:"#fff", fontFamily:"'Lora',serif", fontSize:16, fontWeight:600 }}>Mein Wortschatz</div>
+        <div style={{ color:"var(--accent2)", fontSize:10, marginTop:1 }}>DE · EN</div>
       </div>
 
       {/* User */}
@@ -677,7 +668,7 @@ function Dashboard({ words, progress, settings, setSettings, introducedWords, ne
       <div style={{ marginBottom:28 }}>
         <h1 style={{ fontSize:26, fontWeight:600, color:"var(--text)", fontFamily:"'Lora',serif" }}>{greeting}, {userName}!</h1>
       </div>
-      <FrenchVoiceHint />
+      <GermanVoiceHint />
 
       {/* Two tiles */}
       <div className="mw-grid2" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20, marginBottom:28 }}>
@@ -732,7 +723,7 @@ function TileFilters({ pairMode, onPairMode, filterMode, onFilterMode, filterCat
           color: filterMode===m ? "var(--accent)" : "var(--text2)",
           border: filterMode===m ? "1px solid var(--accent)" : "1px solid var(--border)",
           transition:"all 0.15s"
-        }}>{m==="frequency" ? ORDER_LABEL : m==="topic" ? "By Topic" : "By Level"}</button>
+        }}>{m==="frequency" ? "By Frequency" : m==="topic" ? "By Topic" : "By Level"}</button>
       ))}
       {filterMode==="topic" && (
         <select value={filterCategory}
@@ -935,13 +926,17 @@ function Flashcards({ words, progress, settings, setDifficulty, markCorrect, mar
     } else if (fm === "topic" && fc !== "All") {
       // By Topic: ONLY taught words in topic (words that went through New Words → By Frequency)
       // Does NOT count towards taught — purely a filter/review of already taught words
-      const taught = words.filter(w => w.category === fc && progress[w.id]).sort((a,b) => ord(a) - ord(b));
+      const taught = words.filter(w => w.category === fc && progress[w.id]).sort((a,b) => a.id - b.id);
       return taught;
     } else {
-      // New words: ALL unseen words in the order of the active dictionary.
-      // Words added to the vocabulary before the learner's position come first (they can be skipped on Update Progress).
+      // By Frequency: ALL unseen words sorted by ID, continue from lastNewWordId
       // Completely ignores topic filter — topic never affects this queue
-      return words.filter(w => !progress[w.id]).sort((a, b) => ord(a) - ord(b));
+      const lastId = loadLastNewWordId(); // always fresh from localStorage
+      const pool = words.filter(w => !progress[w.id]).sort((a, b) => a.id - b.id);
+      if (pool.length === 0) return [];
+      if (lastId === 0) return pool;
+      const startIdx = pool.findIndex(w => w.id > lastId);
+      return startIdx === -1 ? [] : pool.slice(startIdx);
     }
   }
 
@@ -964,7 +959,7 @@ function Flashcards({ words, progress, settings, setDifficulty, markCorrect, mar
   // Load taughtToday count from localStorage to stay in sync across sessions
   const taughtTodayFromStorage = (() => {
     try {
-      const data = JSON.parse(localStorage.getItem(dk("frTaughtToday"))||"{}");
+      const data = JSON.parse(localStorage.getItem("deTaughtToday")||"{}");
       const today = new Date().toDateString();
       return data.date === today ? data.count : 0;
     } catch { return 0; }
@@ -973,7 +968,7 @@ function Flashcards({ words, progress, settings, setDifficulty, markCorrect, mar
   const word = queue[idx];
   const prog = word ? progress[word.id]||{} : {};
   const pm = settings.sessionType==="review" ? settings.reviewPairMode : settings.learnPairMode;
-  const isFR_first = pm==="FR → EN";
+  const isDE_first = pm==="DE → EN";
   const diffColor = { Hard:"var(--hard)", Default:"var(--default)", Easy:"var(--easy)" };
   const curDiff = prog.difficulty||"Default";
   const sessionLabel = isReview ? "Review" : "New Words";
@@ -981,12 +976,12 @@ function Flashcards({ words, progress, settings, setDifficulty, markCorrect, mar
   const filterLabel = !isReview
     ? (settings.learnFilterMode === "topic" && settings.learnFilterCategory !== "All"
         ? `By Topic · ${settings.learnFilterCategory}`
-        : ORDER_LABEL)
+        : "By Frequency")
     : settings.reviewFilterMode === "topic" && settings.reviewFilterCategory !== "All"
         ? `By Topic · ${settings.reviewFilterCategory}`
         : settings.reviewFilterMode === "level"
           ? `By Level · ${settings.reviewFilterLevel || "All"}`
-          : ORDER_LABEL;
+          : "By Frequency";
 
   const isByTopicDone = !isReview && settings.learnFilterMode === "topic" && settings.learnFilterCategory !== "All";
   const isByLevelDone = isReview && settings.reviewFilterMode === "level";
@@ -1042,13 +1037,13 @@ function Flashcards({ words, progress, settings, setDifficulty, markCorrect, mar
     }
   }
 
-  const frontText = isFR_first ? word.fr : word.en;
-  const backText  = isFR_first ? word.en : word.fr;
-  const frontSentence = isFR_first ? word.fr_sentence : word.en_sentence;
-  const backSentence  = isFR_first ? word.en_sentence : word.fr_sentence;
+  const frontText = isDE_first ? word.de : word.en;
+  const backText  = isDE_first ? word.en : word.de;
+  const frontSentence = isDE_first ? word.de_sentence : word.en_sentence;
+  const backSentence  = isDE_first ? word.en_sentence : word.de_sentence;
 
   if (isWriting && isReview) return (
-    <WritingCard word={word} idx={idx} total={queue.length} isFR_first={isFR_first}
+    <WritingCard word={word} idx={idx} total={queue.length} isDE_first={isDE_first}
       prog={prog} curDiff={progress[word.id]?.difficulty || "Default"} diffColor={diffColor}
       onNext={next} onBack={() => setView("dashboard")} setDifficulty={setDifficulty} markCorrect={markCorrect} markWrong={markWrong}
       isLearn={false} sessionLabel={sessionLabel} sessionIcon={sessionIcon} pairMode={pm} tooFewWarning={tooFewWarning} filterLabel={filterLabel} reviewedCount={reviewedIds.size} incrementDailyReview={incrementDailyReview} />
@@ -1056,10 +1051,10 @@ function Flashcards({ words, progress, settings, setDifficulty, markCorrect, mar
 
   // New Words Writing: show both sides immediately + PracticeField (no input step)
   if (isWriting && !isReview) {
-    const frontT = isFR_first ? word.fr : word.en;
-    const backT  = isFR_first ? word.en : word.fr;
-    const frontS = isFR_first ? word.fr_sentence : word.en_sentence;
-    const backS  = isFR_first ? word.en_sentence : word.fr_sentence;
+    const frontT = isDE_first ? word.de : word.en;
+    const backT  = isDE_first ? word.en : word.de;
+    const frontS = isDE_first ? word.de_sentence : word.en_sentence;
+    const backS  = isDE_first ? word.en_sentence : word.de_sentence;
     return (
       <div style={{ maxWidth:620, margin:"0 auto" }}>
         <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20 }}>
@@ -1070,24 +1065,24 @@ function Flashcards({ words, progress, settings, setDifficulty, markCorrect, mar
         </div>
         <div style={{ background:"var(--surface)", border:"1px solid var(--border)", borderRadius:16, boxShadow:"var(--shadow)", padding:"32px 36px" }} className="mw-card">
           {/* Front */}
-          <div style={{ fontSize:11, textTransform:"uppercase", letterSpacing:"0.1em", color:"var(--accent2)", marginBottom:8 }}>{isFR_first ? "Français" : "English"}</div>
+          <div style={{ fontSize:11, textTransform:"uppercase", letterSpacing:"0.1em", color:"var(--accent2)", marginBottom:8 }}>{isDE_first ? "Deutsch" : "English"}</div>
           <div style={{ fontSize:30, fontWeight:600, color:"var(--accent)", marginBottom:4, fontFamily:"'Lora',serif", display:"flex", alignItems:"center", gap:8 }}>
-            {frontT}{isFR_first && <SpeakBtn text={frontT} style={{ fontSize:18 }} />}
+            {frontT}{isDE_first && <SpeakBtn text={frontT} style={{ fontSize:18 }} />}
           </div>
-          {isFR_first && <div style={{ fontSize:15, color:"var(--text2)", fontStyle:"italic", marginBottom:6 }}>[{word.pron}]</div>}
+          {isDE_first && <div style={{ fontSize:15, color:"var(--text2)", fontStyle:"italic", marginBottom:6 }}>[{word.pron}]</div>}
           {word.info && word.info !== "-" && <div style={{ fontSize:13, color:"var(--text2)", marginBottom:6 }}>{word.info}</div>}
           <div style={{ fontSize:14, color:"var(--text2)", fontStyle:"italic", marginBottom:20 }}>{frontS}</div>
           {/* Back */}
           <div style={{ borderTop:"1px solid var(--border)", paddingTop:20, marginBottom:4 }}>
-            <div style={{ fontSize:11, textTransform:"uppercase", letterSpacing:"0.1em", color:"var(--accent2)", marginBottom:8 }}>{isFR_first ? "English" : "Français"}</div>
+            <div style={{ fontSize:11, textTransform:"uppercase", letterSpacing:"0.1em", color:"var(--accent2)", marginBottom:8 }}>{isDE_first ? "English" : "Deutsch"}</div>
             <div style={{ fontSize:26, fontWeight:600, color:"var(--text)", marginBottom:4, fontFamily:"'Lora',serif", display:"flex", alignItems:"center", gap:8 }}>
-              {backT}{!isFR_first && <SpeakBtn text={backT} style={{ fontSize:18 }} />}
+              {backT}{!isDE_first && <SpeakBtn text={backT} style={{ fontSize:18 }} />}
             </div>
-            {!isFR_first && <div style={{ fontSize:15, color:"var(--text2)", fontStyle:"italic", marginBottom:6 }}>[{word.pron}]</div>}
+            {!isDE_first && <div style={{ fontSize:15, color:"var(--text2)", fontStyle:"italic", marginBottom:6 }}>[{word.pron}]</div>}
             <div style={{ fontSize:14, color:"var(--text2)", fontStyle:"italic", marginBottom:8 }}>{backS}</div>
           </div>
           {/* Practice */}
-          <PracticeField alt={word.alt} correctAnswer={isFR_first ? word.en : word.fr} isFR={!isFR_first} onNext={next} />
+          <PracticeField info={word.info} correctAnswer={isDE_first ? word.en : word.de} isDE={!isDE_first} onNext={next} />
           {/* Buttons */}
           <div style={{ marginTop:16 }}>
             <DifficultyButtons isLearn={true} wordId={word.id} savedDiff={progress[word.id]?.difficulty || "Default"} diffColor={diffColor} setDifficulty={setDifficulty} />
@@ -1125,13 +1120,13 @@ function Flashcards({ words, progress, settings, setDifficulty, markCorrect, mar
         cursor:flipped?"default":"pointer", display:"flex", flexDirection:"column", justifyContent:"center"
       }}>
         <div style={{ fontSize:11, textTransform:"uppercase", letterSpacing:"0.1em", color:"var(--accent2)", marginBottom:12 }}>
-          {isFR_first ? "Français" : "English"}
+          {isDE_first ? "Deutsch" : "English"}
         </div>
         <div style={{ fontSize:34, fontWeight:600, color:"var(--accent)", marginBottom:8, fontFamily:"'Lora',serif", display:"flex", alignItems:"center", gap:8 }}>
           {frontText}
-          {isFR_first && <SpeakBtn text={frontText} style={{ fontSize:20 }} />}
+          {isDE_first && <SpeakBtn text={frontText} style={{ fontSize:20 }} />}
         </div>
-        {isFR_first && <div style={{ fontSize:16, color:"var(--text2)", fontStyle:"italic", marginBottom:16 }}>[{word.pron}]</div>}
+        {isDE_first && <div style={{ fontSize:16, color:"var(--text2)", fontStyle:"italic", marginBottom:16 }}>[{word.pron}]</div>}
         <div style={{ fontSize:15, color:"var(--text2)", fontStyle:"italic" }}>{frontSentence}</div>
 
         {!flipped && (
@@ -1142,13 +1137,13 @@ function Flashcards({ words, progress, settings, setDifficulty, markCorrect, mar
         {flipped && (
           <div style={{ marginTop:28, paddingTop:24, borderTop:"1px solid var(--border)" }}>
             <div style={{ fontSize:11, textTransform:"uppercase", letterSpacing:"0.1em", color:"var(--accent2)", marginBottom:10 }}>
-              {isFR_first ? "English" : "Français"}
+              {isDE_first ? "English" : "Deutsch"}
             </div>
             <div style={{ fontSize:28, fontWeight:600, color:"var(--text)", marginBottom:6, fontFamily:"'Lora',serif", display:"flex", alignItems:"center", gap:8 }}>
               {backText}
-              {!isFR_first && <SpeakBtn text={backText} style={{ fontSize:18 }} />}
+              {!isDE_first && <SpeakBtn text={backText} style={{ fontSize:18 }} />}
             </div>
-            {!isFR_first && <div style={{ fontSize:15, color:"var(--text2)", fontStyle:"italic", marginBottom:12 }}>[{word.pron}]</div>}
+            {!isDE_first && <div style={{ fontSize:15, color:"var(--text2)", fontStyle:"italic", marginBottom:12 }}>[{word.pron}]</div>}
             {word.info&&word.info!=="-" && <div style={{ fontSize:13, color:"var(--text2)", marginBottom:10 }}>{word.info}</div>}
             <div style={{ fontSize:14, color:"var(--text2)", fontStyle:"italic" }}>{backSentence}</div>
           </div>
@@ -1157,11 +1152,11 @@ function Flashcards({ words, progress, settings, setDifficulty, markCorrect, mar
 
       {isWriting && !isReview && !flipped && (
         <div style={{ marginTop:16 }}>
-          <PracticeField alt={word.alt} correctAnswer={isFR_first ? word.fr : word.en} isFR={isFR_first} onCorrect={() => setFlipped(true)} onNext={next} />
+          <PracticeField info={word.info} correctAnswer={isDE_first ? word.de : word.en} isDE={isDE_first} onCorrect={() => setFlipped(true)} onNext={next} />
         </div>
       )}
       {flipped && !isReview && (
-        <PracticeField alt={word.alt} correctAnswer={isFR_first ? word.en : word.fr} isFR={!isFR_first} onNext={next} />
+        <PracticeField info={word.info} correctAnswer={isDE_first ? word.en : word.de} isDE={!isDE_first} onNext={next} />
       )}
       {flipped && (
         <div style={{ marginTop:16 }}>
@@ -1191,7 +1186,7 @@ function Dictionary({ words, progress, setDifficulty }) {
   const filtered = words.filter(w => {
     const q = search.toLowerCase().trim();
     const idMatch = /^\d+$/.test(q) && w.id === parseInt(q);
-    return (!q || idMatch || w.fr.toLowerCase().includes(q) || w.en.toLowerCase().includes(q))
+    return (!q || idMatch || w.de.toLowerCase().includes(q) || w.en.toLowerCase().includes(q))
       && (filterCat==="All" || w.category===filterCat)
       && (filterLvl==="All" || w.level===filterLvl);
   });
@@ -1199,9 +1194,9 @@ function Dictionary({ words, progress, setDifficulty }) {
   return (
     <div className="mw-dict-page" style={{ height:"calc(100vh - 120px)", display:"flex", flexDirection:"column" }}>
       <h2 style={{ fontSize:22, marginBottom:16, color:"var(--text)", fontFamily:"'Lora',serif", flexShrink:0 }}>Dictionary</h2>
-      <FrenchVoiceHint />
+      <GermanVoiceHint />
       <div style={{ display:"flex", gap:10, marginBottom:16, flexWrap:"wrap", flexShrink:0 }}>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search FR, EN or #id…"
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search DE, EN or #id…"
           style={{ padding:"8px 14px", borderRadius:8, border:"1px solid var(--border)", background:"var(--surface)", fontSize:14, minWidth:200, outline:"none" }} />
         <select value={filterCat} onChange={e => setFilterCat(e.target.value)}
           style={{ padding:"8px 12px", borderRadius:8, border:"1px solid var(--border)", background:"var(--surface)", fontSize:14, outline:"none" }}>
@@ -1217,7 +1212,7 @@ function Dictionary({ words, progress, setDifficulty }) {
         <table style={{ width:"100%", borderCollapse:"collapse", fontSize:14 }}>
           <thead style={{ position:"sticky", top:0, zIndex:10 }}>
             <tr style={{ background:"var(--surface2)", borderBottom:"2px solid var(--border)" }}>
-              {["#","FR","Pronunciation","Info","EN","Sentence (FR)","Level","Category"].map(h => (
+              {["#","DE","Pronunciation","Info","EN","Sentence (DE)","Level","Category"].map(h => (
                 <th key={h} style={{ padding:"10px 14px", textAlign:"left", fontWeight:600, color:"var(--text2)", whiteSpace:"nowrap", fontSize:12, background:"var(--surface2)" }}>
                   {h}{(h==="Level"||h==="Category") && <span style={{ fontSize:10, opacity:0.5, marginLeft:4 }}>▼</span>}
                 </th>
@@ -1230,13 +1225,13 @@ function Dictionary({ words, progress, setDifficulty }) {
                 <td style={{ padding:"10px 14px", color:"var(--text2)", fontSize:12, fontWeight:500 }}>{w.id}</td>
                 <td style={{ padding:"10px 14px", fontWeight:600, color:"var(--accent)", fontFamily:"'Lora',serif" }}>
                   <span style={{ display:"flex", alignItems:"center", gap:4 }}>
-                    {w.fr}<SpeakBtn text={w.fr} />
+                    {w.de}<SpeakBtn text={w.de} />
                   </span>
                 </td>
                 <td style={{ padding:"10px 14px", color:"var(--text2)", fontStyle:"italic" }}>[{w.pron}]</td>
                 <td style={{ padding:"10px 14px", color:"var(--text2)", fontSize:12 }}>{w.info}</td>
                 <td style={{ padding:"10px 14px" }}>{w.en}</td>
-                <td style={{ padding:"10px 14px", color:"var(--text2)", fontStyle:"italic", maxWidth:220, fontSize:13 }}>{w.fr_sentence}</td>
+                <td style={{ padding:"10px 14px", color:"var(--text2)", fontStyle:"italic", maxWidth:220, fontSize:13 }}>{w.de_sentence}</td>
                 <td style={{ padding:"10px 14px" }}><span style={{ background:"var(--surface2)", border:"1px solid var(--border)", borderRadius:4, padding:"2px 8px", fontSize:11 }}>{w.level}</span></td>
                 <td style={{ padding:"10px 14px", color:"var(--text2)", fontSize:13 }}>{w.category}</td>
               </tr>
@@ -1248,44 +1243,29 @@ function Dictionary({ words, progress, setDifficulty }) {
   );
 }
 
-// ── Dictionary choice (Update Progress page) ──────────────────────────────
-function DictionaryChoice({ words, progress, onSkipAdded }) {
-  const lastId = loadLastNewWordId();
-  const last = words.find(w => w.id === lastId);
-  const lastPos = last ? ord(last) : 0;
-  const skippable = words.filter(w => w.added && !progress[w.id] && ord(w) < lastPos);
-  const [skipped, setSkipped] = useState(0);
-  function choose(d) {
-    if (d === DICT) return;
-    try { localStorage.setItem("frDictionary", d); } catch {}
-    location.reload();
-  }
-  const btn = active => ({ flex:1, padding:"10px 12px", borderRadius:10, fontSize:14, fontWeight:600, textAlign:"left",
-    border: active ? "2px solid var(--accent)" : "1px solid var(--border)", background: active ? "var(--accent-light)" : "var(--surface)", color:"var(--text)" });
+// ── Keyboard choice (Update Progress page) ────────────────────────────────
+function KeyboardChoice({ value, onChange }) {
+  const v = value || "qwerty";
+  const opt = (k, title, note) => (
+    <button onClick={() => onChange(k)} style={{ flex:"1 1 140px", padding:"10px 12px", borderRadius:10, fontSize:14, fontWeight:600, textAlign:"left",
+      border: v === k ? "2px solid var(--accent)" : "1px solid var(--border)", background: v === k ? "var(--accent-light)" : "var(--surface)", color:"var(--text)" }}>
+      {title}<div style={{ fontSize:12, fontWeight:400, color:"var(--text2)", marginTop:2 }}>{note}</div></button>
+  );
   return (
     <div style={{ maxWidth:500, marginBottom:20 }}>
-      <h2 style={{ fontSize:22, marginBottom:6, color:"var(--text)", fontFamily:"'Lora',serif" }}>Dictionary</h2>
+      <h2 style={{ fontSize:22, marginBottom:6, color:"var(--text)", fontFamily:"'Lora',serif" }}>Keyboard on phones</h2>
       <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:8 }}>
-        <button style={btn(DICT === "freq")} onClick={() => choose("freq")}>By frequency<div style={{ fontSize:12, fontWeight:400, color:"var(--text2)", marginTop:2 }}>The most used words first</div></button>
-        <button style={btn(DICT === "level")} onClick={() => choose("level")}>By level A1 → C2<div style={{ fontSize:12, fontWeight:400, color:"var(--text2)", marginTop:2 }}>Beginner words first</div></button>
+        {opt("qwerty", "App keyboard QWERTY", "With ä ö ü ß, smaller")}
+        {opt("qwertz", "App keyboard QWERTZ", "German layout")}
+        {opt("off", "Phone keyboard", "Your phone's own keyboard")}
       </div>
-      <p style={{ fontSize:12, color:"var(--text2)", lineHeight:1.5 }}>Both dictionaries have the same words. Each keeps its own progress: switching does not delete anything, you continue where you left off in the other one.</p>
-      {skippable.length > 0 && (
-        <div style={{ marginTop:12, background:"var(--surface)", border:"1px solid var(--border)", borderRadius:12, padding:"14px 18px", fontSize:13, lineHeight:1.5 }}>
-          <strong>{skippable.length} words were added</strong> to the vocabulary before your current position (for example {skippable.slice(0, 5).map(w => w.fr).join(", ")}). They come first in New Words. If you already know them, you can skip them: they will be marked as taught and appear in Review.
-          <div style={{ marginTop:10 }}>
-            <button onClick={() => { onSkipAdded(skippable.map(w => w.id)); setSkipped(skippable.length); }}
-              style={{ padding:"8px 16px", borderRadius:8, border:"none", background:"var(--accent)", color:"#fff", fontWeight:600, fontSize:13 }}>Skip the added words</button>
-          </div>
-        </div>
-      )}
-      {skipped > 0 && skippable.length === 0 && <div style={{ marginTop:10, fontSize:13, color:"var(--easy)" }}>✓ {skipped} added words marked as taught.</div>}
+      <p style={{ fontSize:12, color:"var(--text2)", lineHeight:1.5 }}>Used when you type an answer on a phone. On a computer you always type on your own keyboard.</p>
     </div>
   );
 }
 
 // ── UpdateProgress ────────────────────────────────────────────────────────
-function UpdateProgress({ introducedCount, taughtTodayCount, streak, onUpdateProgress, streakThreshold, onSaveStreakThreshold, intervals, onSaveIntervals }) {
+function UpdateProgress({ introducedCount, taughtTodayCount, streak, onUpdateProgress, streakThreshold, onSaveStreakThreshold, intervals, onSaveIntervals, requireArticle, onSaveRequireArticle }) {
   const iv = intervals || { Hard:1, Default:3, Easy:7 };
   const [pTaught, setPTaught] = useState(String(introducedCount));
   const [pToday, setPToday] = useState(String(taughtTodayCount));
@@ -1356,6 +1336,15 @@ function UpdateProgress({ introducedCount, taughtTodayCount, streak, onUpdatePro
             </div>
           ))}
         </div>
+        {/* Articles of German nouns */}
+        <div style={{ fontSize:13, fontWeight:600, color:"var(--text)", margin:"16px 0 8px" }}>Articles of nouns</div>
+        <label style={{ display:"flex", alignItems:"center", gap:10, fontSize:14, color:"var(--text)", cursor:"pointer", marginBottom:6 }}>
+          <input type="checkbox" checked={!!requireArticle} onChange={e => onSaveRequireArticle(e.target.checked)} style={{ width:16, height:16 }} />
+          Require the article when typing a German noun (das Haus)
+        </label>
+        <p style={{ fontSize:11, color:"var(--text2)", marginBottom:10, lineHeight:1.5 }}>
+          Off: "Haus" and "das Haus" are both correct. On: "Haus" without its article is a mistake. A wrong article ("der Haus") is always a mistake. The change applies immediately.
+        </p>
         {/* Review intervals */}
         <div style={{ fontSize:13, fontWeight:600, color:"var(--text)", margin:"16px 0 8px" }}>Review intervals (days)</div>
         <p style={{ fontSize:11, color:"var(--text2)", marginBottom:10, lineHeight:1.5 }}>
@@ -1437,7 +1426,7 @@ function WebPages({ webPages, saveWebPages }) {
     <div style={{ maxWidth:520 }}>
       <h2 style={{ fontSize:22, marginBottom:6, color:"var(--text)", fontFamily:"'Lora',serif" }}>Web Pages</h2>
       <p style={{ color:"var(--text2)", fontSize:14, marginBottom:20, lineHeight:1.6 }}>
-        Manage your favourite French learning links. They appear as buttons in the bottom bar.
+        Manage your favourite German learning links. They appear as buttons in the bottom bar.
         Drag to reorder. {webPages.length >= SOFT_LIMIT && <span style={{ color:"var(--hard)" }}>Maximum {SOFT_LIMIT} links reached.</span>}
       </p>
 
@@ -1502,22 +1491,21 @@ function About() {
   const h = { fontSize:15, fontWeight:600, color:"var(--text)", margin:"20px 0 8px" };
   const p = { fontSize:14, color:"var(--text)", lineHeight:1.7 };
   const a = { color:"var(--accent)" };
-  const L = (href, text) => <a style={a} href={href} target="_blank" rel="noopener noreferrer">{text}</a>;
   return (
     <div style={{ maxWidth:620 }}>
       <h2 style={{ fontSize:22, marginBottom:12, color:"var(--text)", fontFamily:"'Lora',serif" }}>About & Licence</h2>
       <div style={{ background:"var(--surface)", border:"1px solid var(--border)", borderRadius:12, padding:"20px 24px" }}>
-        <p style={p}>Mon Vocab is a free app for learning the most useful French words. It was created by Jana Dolečková with the help of Claude (Anthropic).</p>
+        <p style={p}>Mein Wortschatz is a free app for learning the 5,000 most useful German words. It was created by Jana Dolečková with the help of Claude (Anthropic).</p>
         <div style={h}>Where the vocabulary comes from</div>
         <ul style={{ ...p, paddingLeft:20 }}>
-          <li>Words, frequency order, pronunciation and grammatical gender: {L("http://www.lexique.org/", "Lexique 4")} by B. New, C. Pallier et al. (CC BY-SA 4.0).</li>
-          <li>Translations and grammar information: {L("https://en.wiktionary.org/", "Wiktionary")} (CC BY-SA 4.0), reviewed and edited.</li>
-          <li>Example sentences: {L("https://tatoeba.org/", "Tatoeba")} (CC BY 2.0 FR); some were edited or written for this app.</li>
-          <li>Levels A1–C2: {L("https://cental.uclouvain.be/cefrlex/flelex/", "FLELex")} by T. François, N. Gala, P. Watrin and C. Fairon (2014), UCLouvain (CC BY-NC-SA 4.0). Words FLELex does not list got a level from their frequency.</li>
+          <li>Translations, pronunciation and grammar information: <a style={a} href="https://en.wiktionary.org/" target="_blank" rel="noopener noreferrer">Wiktionary</a>, via <a style={a} href="https://kaikki.org/" target="_blank" rel="noopener noreferrer">kaikki.org</a> (CC BY-SA 4.0), reviewed and edited.</li>
+          <li>Example sentences: <a style={a} href="https://tatoeba.org/" target="_blank" rel="noopener noreferrer">Tatoeba</a> (CC BY 2.0 FR); a small number were written for this app.</li>
+          <li>Word frequency: OpenSubtitles word list <a style={a} href="https://github.com/hermitdave/FrequencyWords" target="_blank" rel="noopener noreferrer">FrequencyWords</a> by Hermit Dave (CC BY-SA 4.0) and the <a style={a} href="https://wortschatz.uni-leipzig.de/en/download" target="_blank" rel="noopener noreferrer">Leipzig Corpora Collection</a> (CC BY 4.0).</li>
+          <li>Levels A1–B1 follow the word lists of the Goethe-Institut; the remaining levels were assigned by frequency.</li>
         </ul>
         <div style={h}>Licence</div>
-        <p style={p}><strong>Non-commercial use only.</strong> Mon Vocab, its code and its vocabulary (french_vocab.csv) are published under the {L("https://creativecommons.org/licenses/by-nc-sa/4.0/", "Creative Commons Attribution-NonCommercial-ShareAlike 4.0")} licence (CC BY-NC-SA 4.0), because the levels come from FLELex, which may not be used commercially.</p>
-        <p style={{ ...p, marginTop:8 }}>The parts taken from Lexique and Wiktionary stay under their own licence, CC BY-SA 4.0, and the example sentences under CC BY 2.0 FR. If you reuse the vocabulary, name the sources above and share your version under the same terms.</p>
+        <p style={p}><strong>The vocabulary</strong> (german_vocab.csv) is published under the <a style={a} href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">Creative Commons Attribution-ShareAlike 4.0</a> licence (CC BY-SA 4.0). You may use and adapt it if you name the sources above and share your version under the same licence.</p>
+        <p style={{ ...p, marginTop:8 }}><strong>The app</strong> (its code and design) is © 2026 Jana Dolečková. All rights reserved.</p>
       </div>
     </div>
   );
@@ -1577,11 +1565,11 @@ function VocabSettings({ loadVocabFromUrl, vocabStatus, vocabError, wordCount })
       <div style={{ marginTop:28, background:"var(--surface2)", borderRadius:10, padding:"16px 20px" }}>
         <div style={{ fontSize:13, fontWeight:600, color:"var(--text)", marginBottom:8 }}>CSV format</div>
         <code style={{ fontSize:11, color:"var(--text2)", lineHeight:1.8, display:"block", whiteSpace:"pre-wrap" }}>
-{`id,fr,pron,info,en,fr_sentence,en_sentence,level,category,alt,order_freq,order_level,added,difficulty
-1,bonjour,bɔ̃ʒuʀ,-,hello,"Bonjour, comment allez-vous ?","Hello, how are you?",A1,Greetings,2.5`}
+{`id,de,pron,info,en,de_sentence,en_sentence,level,category
+1,hallo,ˈhalo,interj.,hello,"Hallo, wie geht es dir?","Hello, how are you?",A1,Greetings`}
         </code>
         <div style={{ fontSize:12, color:"var(--text2)", marginTop:10, lineHeight:1.6 }}>
-          Columns <strong>difficulty</strong> and <strong>category</strong> are optional — defaults to 2.5 and "General". Encoding must be UTF-8.
+          Column <strong>category</strong> is optional — defaults to "General". Encoding must be UTF-8.
         </div>
       </div>
     </div>
@@ -1589,44 +1577,112 @@ function VocabSettings({ loadVocabFromUrl, vocabStatus, vocabError, wordCount })
 }
 
 // ── Answer checking ───────────────────────────────────────────────────────
-// French: the whole answer, or one or more of its forms in any order ("le / la / les": "la", "les le", "le, la/les"),
-// a form in brackets ("je (j')": "j'") and other accepted spellings (column alt). "oe" counts as "œ".
-// English: the whole answer, as before.
-function normAns(t) { return t.toLowerCase().replace(/[’`]/g, "'").replace(/œ/g, "oe").replace(/æ/g, "ae").replace(/\s+/g, " ").trim(); }
-function answerForms(answer, alt) {
-  const forms = new Set();
-  answer.split(" / ").forEach(part => {
-    const m = /^(.*?)\s*\((.*?)\)\s*$/.exec(part.trim());
-    if (m) { forms.add(normAns(m[1])); m[2].split(/[,/]/).forEach(x => forms.add(normAns(x))); }
-    else forms.add(normAns(part));
-  });
-  (alt || []).forEach(a => forms.add(normAns(a)));
-  forms.delete("");
-  return forms;
+// German: exact spelling, capital letters included (nouns!). "der/die/das" accepts any of its parts, in any order.
+//         A noun may be typed with its article ("das Haus"); a wrong article is always a mistake.
+//         Setting "requireArticle" (Update progress page): the noun without its article is a mistake too.
+// English: any one of the meanings on the card is enough: "to go, to walk" accepts "go", "to walk", ...
+function articleRequired() { return !!loadSettings().requireArticle; }
+function expectedGerman(answer, info) {   // what the learner is asked to type: "das Haus" when articles are required
+  const articles = nounArticles(info);
+  return articles.length && articleRequired() && answer !== "der/die/das" ? articles.join("/") + " " + answer : answer;
 }
-function checkAnswer(input, answer, isFrench, alt) {
-  const typed = normAns(input);
+function germanWithArticle(answer, info) {   // shown as the correct answer: always with the article, whatever the setting
+  const articles = nounArticles(info);
+  return articles.length && answer !== "der/die/das" ? articles.join("/") + " " + answer : answer;
+}
+function nounArticles(info) {          // "n. — das Haus, pl. Häuser" -> ["das"];  "n. — der/die Jugendliche, …" -> ["der","die"]
+  const m = /^n\.(?: pl\.)? — ((?:der|die|das)(?:\/(?:der|die|das))*) /.exec(info || "");
+  return m ? m[1].split("/") : [];
+}
+function checkAnswer(input, answer, isGerman, info) {
+  const typed = input.trim().replace(/\s+/g, " ");
   if (!typed) return false;
-  if (typed === normAns(answer)) return true;
-  if (!isFrench) return false;
-  const forms = answerForms(answer, alt);
-  const longest = Math.max(1, ...[...forms].map(f => f.split(" ").length));
-  for (const chunk of typed.split(/\s*[\/,;]\s*/).filter(Boolean)) {
-    const ws = chunk.split(" ");
-    let i = 0;
-    while (i < ws.length) {                       // longest known form first: "de la" before "de"
-      let n = Math.min(longest, ws.length - i);
-      while (n > 0 && !forms.has(ws.slice(i, i + n).join(" "))) n--;
-      if (n === 0) return false;
-      i += n;
+  if (isGerman) {
+    const articles = answer === "der/die/das" ? [] : nounArticles(info);
+    if (typed === answer) return !(articles.length && articleRequired());
+    // one or more forms in any order, separated by "/", ",", ";" or spaces: "die der", "der/die Jugendliche"
+    const tokens = typed.split(/\s*[\/,;]\s*|\s+/).filter(Boolean);
+    if (articles.length) {
+      const n = answer.split(" ").length;
+      if (tokens.slice(-n).join(" ") !== answer) return false;
+      const arts = tokens.slice(0, -n);
+      return arts.length ? arts.every(a => articles.includes(a)) : !articleRequired();
     }
+    const forms = answer.split("/").map(a => a.trim());
+    return forms.length > 1 && tokens.every(t => forms.includes(t));
   }
-  return true;
+  const norm = t => t.toLowerCase().replace(/\([^)]*\)/g, " ").replace(/[.!?…]/g, "").replace(/\s+/g, " ").trim().replace(/^to /, "");
+  if (norm(typed) === norm(answer)) return true;
+  const parts = answer.split(/[,;/]/).map(p => p.includes(":") ? p.split(":").pop() : p).map(norm).filter(Boolean);
+  return parts.includes(norm(typed));
+}
+
+// ── App keyboard (phones) ──────────────────────────────────────────────────
+// On a narrow touch screen the phone keyboard stays hidden (inputMode "none") and this keyboard types into the field.
+// Setting "appKeyboard": "qwerty" (default), "qwertz" or "off" (the phone's own keyboard).
+function appKbLayout() { const k = loadSettings().appKeyboard; return k === "off" ? null : (k === "qwertz" ? "qwertz" : "qwerty"); }
+function appKbActive() {
+  try { return !!appKbLayout() && window.matchMedia("(max-width: 760px) and (pointer: coarse)").matches; } catch { return false; }
+}
+function typeInto(el, fn) {              // change a React-controlled input the way typing does
+  const v = el.value, a = el.selectionStart ?? v.length, b = el.selectionEnd ?? v.length;
+  const [nv, caret] = fn(v, a, b);
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, nv);
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+  try { el.setSelectionRange(caret, caret); } catch {}
+}
+function AppKeyboard() {
+  const [target, setTarget] = useState(null);
+  const [shift, setShift] = useState(false);
+  const [, tick] = useState(0);
+  useEffect(() => {
+    function onFocus(e) { if (e.target.dataset && e.target.dataset.appkb) setTarget(e.target); }
+    document.addEventListener("focusin", onFocus);
+    const t = setInterval(() => tick(n => n + 1), 300);   // notices a field that was disabled or removed
+    return () => { document.removeEventListener("focusin", onFocus); clearInterval(t); };
+  }, []);
+  const visible = appKbActive() && target && document.body.contains(target);
+  useEffect(() => { document.body.classList.toggle("mw-kb-open", !!visible); }, [visible]);
+  if (!visible) return null;
+  const top = appKbLayout() === "qwertz" ? "qwertzuiop" : "qwertyuiop";
+  const bottom = appKbLayout() === "qwertz" ? "yxcvbnm" : "zxcvbnm";
+  const up = c => shift ? c.toUpperCase() : c;
+  const key = (label, fn, style = {}) => (
+    <button key={label} onPointerDown={e => { e.preventDefault(); fn(); }} className="mw-key" style={style}>{label}</button>
+  );
+  const ins = c => { typeInto(target, (v, a, b) => [v.slice(0, a) + c + v.slice(b), a + c.length]); if (shift) setShift(false); };
+  const del = () => typeInto(target, (v, a, b) => a !== b ? [v.slice(0, a) + v.slice(b), a] : a > 0 ? [v.slice(0, a - 1) + v.slice(a), a - 1] : [v, 0]);
+  const press = k => target.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true }));
+  function next() {                        // the Next button that is on screen, else Tab as on a computer
+    const b = [...document.querySelectorAll(".mw-main button")].find(x => /^Next/.test(x.textContent.trim()) && x.offsetParent);
+    if (b) b.click(); else press("Tab");
+  }
+  const done = target.disabled;            // answer checked: the field is locked, only Next makes sense
+  const row = (chars, extra = []) => <div className="mw-krow">{[...chars].map(c => key(up(c), () => ins(up(c))))}{extra}</div>;
+  return (
+    <div className="mw-kb">
+      <div className="mw-krow">{["ä","ö","ü","ß","Ä","Ö","Ü"].map(c => key(c, () => ins(c), { background:"var(--accent-light)", color:"var(--accent)", fontWeight:600 }))}</div>
+      {row(top)}
+      {row("asdfghjkl")}
+      <div className="mw-krow">
+        {key("⇧", () => setShift(s => !s), { flex:1.4, background: shift ? "var(--accent)" : "#b9c0c8", color: shift ? "#fff" : "var(--text)" })}
+        {[...bottom].map(c => key(up(c), () => ins(up(c))))}
+        {key("⌫", del, { flex:1.4, background:"#b9c0c8" })}
+      </div>
+      <div className="mw-krow">
+        {key("-", () => ins("-"), { background:"#b9c0c8" })}
+        {key("'", () => ins("'"), { background:"#b9c0c8" })}
+        {key(" ", () => ins(" "), { flex:4 })}
+        {key("Next →", next, { flex: done ? 4 : 2, background: done ? "var(--accent)" : "#b9c0c8", color: done ? "#fff" : "var(--text)", fontSize:14, fontWeight:600 })}
+        {!done && key("Check", () => press("Enter"), { flex:2.4, background:"var(--accent)", color:"#fff", fontSize:14, fontWeight:600 })}
+      </div>
+    </div>
+  );
 }
 
 // ── PracticeField ─────────────────────────────────────────────────────────
-const FR_CHARS_PRACTICE = ["é","è","ê","ë","à","â","ù","û","ü","î","ï","ô","ç","œ","æ"];
-function PracticeField({ correctAnswer, isFR, alt, onCorrect, onNext }) {
+const DE_CHARS_PRACTICE = ["ä","ö","ü","ß","Ä","Ö","Ü"];
+function PracticeField({ correctAnswer, isDE, info, onCorrect, onNext }) {
   const [val, setVal] = useState("");
   const [lastAttempt, setLastAttempt] = useState(null); // { text, ok }
   const inputRef = useRef(null);
@@ -1638,7 +1694,7 @@ function PracticeField({ correctAnswer, isFR, alt, onCorrect, onNext }) {
 
   function check() {
     if (!val.trim()) return;
-    const ok = checkAnswer(val, correctAnswer, isFR, alt);
+    const ok = checkAnswer(val, correctAnswer, isDE, info);
     setLastAttempt({ text: val, ok });
     setVal("");
     if (ok && onCorrect) onCorrect();
@@ -1665,15 +1721,16 @@ function PracticeField({ correctAnswer, isFR, alt, onCorrect, onNext }) {
         </div>
       )}
       <div style={{ display:"flex", gap:6, alignItems:"center" }}>
-        <input ref={inputRef} value={val} onChange={e => setVal(e.target.value)}
+        <input ref={inputRef} value={val} onChange={e => setVal(e.target.value)} data-appkb="1" inputMode={appKbActive() ? "none" : undefined}
+          onFocus={e => appKbActive() && setTimeout(() => e.target.scrollIntoView({ block:"center", behavior:"smooth" }), 50)}
           onKeyDown={handleKeyDown}
-          placeholder={lastAttempt?.ok ? "Keep practising…" : `Type "${correctAnswer}"…`}
+          placeholder={lastAttempt?.ok ? "Keep practising…" : `Type "${isDE ? expectedGerman(correctAnswer, info) : correctAnswer}"…`}
           style={{ flex:1, padding:"6px 10px", borderRadius:6, border:"1px solid var(--border)", fontSize:13, outline:"none" }} />
         <button onClick={check} style={{ padding:"6px 12px", background:"var(--accent)", color:"#fff", border:"none", borderRadius:6, fontSize:12 }}>Check</button>
       </div>
-      {isFR && (
+      {isDE && !appKbActive() && (
         <div style={{ display:"flex", gap:3, flexWrap:"wrap", marginTop:6 }}>
-          {FR_CHARS_PRACTICE.map(c => (
+          {DE_CHARS_PRACTICE.map(c => (
             <button key={c} onClick={() => { setVal(v => v + c); inputRef.current?.focus(); }}
               style={{ padding:"2px 7px", fontSize:13, borderRadius:4, border:"1px solid var(--border)", background:"var(--surface)", color:"var(--text)" }}>{c}</button>
           ))}
@@ -1684,9 +1741,9 @@ function PracticeField({ correctAnswer, isFR, alt, onCorrect, onNext }) {
 }
 
 // ── WritingCard ────────────────────────────────────────────────────────────
-const FR_CHARS = ["é","è","ê","ë","à","â","ù","û","ü","î","ï","ô","ç","œ","æ"];
+const DE_CHARS = ["ä","ö","ü","ß","Ä","Ö","Ü"];
 
-function WritingCard({ word, idx, total, isFR_first, prog, curDiff, diffColor, onNext, onBack, setDifficulty, markCorrect, markWrong, isLearn, sessionLabel, sessionIcon, pairMode, tooFewWarning, filterLabel, reviewedCount, incrementDailyReview }) {
+function WritingCard({ word, idx, total, isDE_first, prog, curDiff, diffColor, onNext, onBack, setDifficulty, markCorrect, markWrong, isLearn, sessionLabel, sessionIcon, pairMode, tooFewWarning, filterLabel, reviewedCount, incrementDailyReview }) {
   const [input, setInput] = useState("");
   const [checked, setChecked] = useState(false);
   const [correct, setCorrect] = useState(false);
@@ -1699,16 +1756,16 @@ function WritingCard({ word, idx, total, isFR_first, prog, curDiff, diffColor, o
     setTimeout(() => inputRef.current?.focus(), 50);
   }, [word.id]);
 
-  const promptText = isFR_first ? word.fr : word.en;
-  const promptSentence = isFR_first ? word.fr_sentence : word.en_sentence;
-  const answerText = isFR_first ? word.en : word.fr;
-  const answerSentence = isFR_first ? word.en_sentence : word.fr_sentence;
-  const promptLang = isFR_first ? "Français" : "English";
-  const answerLang = isFR_first ? "English" : "Français";
+  const promptText = isDE_first ? word.de : word.en;
+  const promptSentence = isDE_first ? word.de_sentence : word.en_sentence;
+  const answerText = isDE_first ? word.en : word.de;
+  const answerSentence = isDE_first ? word.en_sentence : word.de_sentence;
+  const promptLang = isDE_first ? "Deutsch" : "English";
+  const answerLang = isDE_first ? "English" : "Deutsch";
 
   function check() {
     if (!input.trim() && !isLearn) return;
-    const isCorrect = checkAnswer(input, answerText, !isFR_first, word.alt);
+    const isCorrect = checkAnswer(input, answerText, !isDE_first, word.info);
     setCorrect(isCorrect);
     setChecked(true);
     if (isCorrect && !isLearn) markCorrect(word.id);
@@ -1755,9 +1812,9 @@ function WritingCard({ word, idx, total, isFR_first, prog, curDiff, diffColor, o
         <div style={{ fontSize:11, textTransform:"uppercase", letterSpacing:"0.1em", color:"var(--accent2)", marginBottom:10 }}>{promptLang}</div>
         <div style={{ fontSize:30, fontWeight:600, color:"var(--accent)", marginBottom:6, fontFamily:"'Lora',serif", display:"flex", alignItems:"center", gap:8 }}>
           {promptText}
-          {isFR_first && <SpeakBtn text={promptText} style={{ fontSize:18 }} />}
+          {isDE_first && <SpeakBtn text={promptText} style={{ fontSize:18 }} />}
         </div>
-        {isFR_first && <div style={{ fontSize:15, color:"var(--text2)", fontStyle:"italic", marginBottom:8 }}>[{word.pron}]</div>}
+        {isDE_first && <div style={{ fontSize:15, color:"var(--text2)", fontStyle:"italic", marginBottom:8 }}>[{word.pron}]</div>}
         <div style={{ fontSize:14, color:"var(--text2)", fontStyle:"italic", marginBottom:16 }}>{promptSentence}</div>
 
         {/* Translation shown immediately in learn mode */}
@@ -1766,7 +1823,7 @@ function WritingCard({ word, idx, total, isFR_first, prog, curDiff, diffColor, o
             <div style={{ fontSize:11, textTransform:"uppercase", letterSpacing:"0.1em", color:"var(--accent2)", marginBottom:4 }}>{answerLang}</div>
             <div style={{ fontSize:20, fontWeight:600, color:"var(--accent)", fontFamily:"'Lora',serif", display:"flex", alignItems:"center", gap:8 }}>
               {answerText}
-              {!isFR_first && <SpeakBtn text={answerText} style={{ fontSize:16 }} />}
+              {!isDE_first && <SpeakBtn text={answerText} style={{ fontSize:16 }} />}
             </div>
             <div style={{ fontSize:13, color:"var(--text2)", fontStyle:"italic", marginTop:4 }}>{answerSentence}</div>
           </div>
@@ -1776,10 +1833,11 @@ function WritingCard({ word, idx, total, isFR_first, prog, curDiff, diffColor, o
         <div style={{ fontSize:11, textTransform:"uppercase", letterSpacing:"0.1em", color:"var(--accent2)", marginBottom:8 }}>
           {isLearn ? "Now try writing it" : answerLang}
         </div>
-        <input ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
+        <input ref={inputRef} value={input} onChange={e => setInput(e.target.value)} data-appkb="1" inputMode={appKbActive() ? "none" : undefined}
+          onFocus={e => appKbActive() && setTimeout(() => e.target.scrollIntoView({ block:"center", behavior:"smooth" }), 50)}
           onKeyDown={e => { if (e.key==="Enter" && !checked) check(); else if (e.key==="Enter" && checked) handleNext(null); }}
           disabled={checked}
-          placeholder={`Type the ${answerLang === "Français" ? "French" : "English"} translation…`}
+          placeholder={`Type the ${answerLang === "Deutsch" ? "German" : "English"} translation…`}
           style={{
             width:"100%", padding:"12px 16px", fontSize:18, borderRadius:10, outline:"none",
             border: checked && !isLearn ? `2px solid ${correct ? "var(--easy)" : "var(--hard)"}` : "2px solid var(--border)",
@@ -1787,10 +1845,10 @@ function WritingCard({ word, idx, total, isFR_first, prog, curDiff, diffColor, o
             color:"var(--text)", fontFamily:"'Lora',serif", transition:"border 0.2s, background 0.2s"
           }} />
 
-        {/* FR character buttons — show when typing French */}
-        {(!isFR_first || isLearn) && (
+        {/* German character buttons — shown when typing German */}
+        {(!isDE_first || isLearn) && !appKbActive() && (
           <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginTop:10 }}>
-            {FR_CHARS.map(c => (
+            {DE_CHARS.map(c => (
               <button key={c} onClick={() => { setInput(v => v + c); inputRef.current?.focus(); }}
                 disabled={checked && !isLearn}
                 style={{ padding:"3px 9px", fontSize:14, borderRadius:6, border:"1px solid var(--border)", background:"var(--surface2)", color:"var(--text)", fontFamily:"serif" }}>{c}</button>
@@ -1804,7 +1862,7 @@ function WritingCard({ word, idx, total, isFR_first, prog, curDiff, diffColor, o
             {correct ? (
               <div>
                 <div style={{ color:"var(--easy)", fontWeight:600, fontSize:15 }}>✓ Correct!</div>
-                {!isFR_first && (
+                {!isDE_first && (
                   <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:4 }}>
                     <span style={{ fontSize:13, color:"var(--text2)", fontStyle:"italic" }}>[{word.pron}]</span>
                     <SpeakBtn text={answerText} style={{ fontSize:14 }} />
@@ -1815,11 +1873,11 @@ function WritingCard({ word, idx, total, isFR_first, prog, curDiff, diffColor, o
               <div>
                 <div style={{ color:"var(--hard)", fontWeight:600, fontSize:15, marginBottom:4 }}>✗ Not quite</div>
                 <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:15, color:"var(--text)" }}>
-                  Correct answer: <strong style={{ fontFamily:"'Lora',serif" }}>{answerText}</strong>
-                  {!isFR_first && <SpeakBtn text={answerText} style={{ fontSize:16 }} />}
+                  Correct answer: <strong style={{ fontFamily:"'Lora',serif" }}>{!isDE_first ? germanWithArticle(answerText, word.info) : answerText}</strong>
+                  {!isDE_first && <SpeakBtn text={answerText} style={{ fontSize:16 }} />}
                 </div>
-                {!isFR_first && <div style={{ fontSize:13, color:"var(--text2)", fontStyle:"italic", marginTop:4 }}>[{word.pron}]</div>}
-                <PracticeField alt={word.alt} correctAnswer={answerText} isFR={!isFR_first} onNext={onNext} />
+                {!isDE_first && <div style={{ fontSize:13, color:"var(--text2)", fontStyle:"italic", marginTop:4 }}>[{word.pron}]</div>}
+                <PracticeField info={word.info} correctAnswer={answerText} isDE={!isDE_first} onNext={onNext} />
               </div>
             )}
             <div style={{ fontSize:13, color:"var(--text2)", fontStyle:"italic", marginTop:6 }}>{answerSentence}</div>

@@ -1,15 +1,15 @@
 {
   "vocab": {
-    "version": "4.0",
+    "version": "1.0",
     "date": "2026-11-18",
-    "wordCount": 5195,
-    "description": "DEV — vocabulary 4.0"
+    "wordCount": 5000,
+    "description": "DEV — 5000 German words"
   },
   "app": {
-    "version": "3.0.0-dev",
+    "version": "1.4.0-dev",
     "date": "2026-11-18",
     "changes": [
-      "Testing environment — DEV branch"
+      "Testing environment — DEV"
     ]
   }
 }
