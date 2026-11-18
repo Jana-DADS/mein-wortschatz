@@ -95,7 +95,7 @@ const PAIR_MODES = ["EN → DE","DE → EN"];
 
 const DEFAULT_VOCAB_URL = "https://raw.githubusercontent.com/Jana-DADS/mein-wortschatz/main/german_vocab.csv";
 const VERSION_JSON_URL = "https://raw.githubusercontent.com/Jana-DADS/mein-wortschatz/main/dev/version.json";
-const APP_VERSION = "1.4.0";
+const APP_VERSION = "1.5.0";
 // Reset stats on new version
 (function() {
   localStorage.setItem("deAppVersion", APP_VERSION);
@@ -463,12 +463,12 @@ function App() {
         }
         .mw-kb { display:none; }
         @media (max-width: 760px) {
-          .mw-kb { display:block; position:fixed; left:0; right:0; bottom:0; z-index:900; background:#d8dde3; padding:5px 3px calc(8px + env(safe-area-inset-bottom)); box-shadow:0 -2px 8px rgba(0,0,0,0.15); }
-          .mw-krow { display:flex; gap:4px; margin:5px 0; }
-          .mw-key { flex:1; min-width:0; height:42px; border:none; border-radius:7px; background:#fff; color:var(--text); font-size:18px; font-family:'DM Sans',sans-serif; box-shadow:0 1px 0 #999; padding:0; touch-action:manipulation; -webkit-user-select:none; user-select:none; }
+          .mw-kb { display:block; position:fixed; left:0; right:0; bottom:0; z-index:900; background:#d8dde3; padding:3px 3px calc(6px + env(safe-area-inset-bottom)); box-shadow:0 -2px 8px rgba(0,0,0,0.15); }
+          .mw-krow { display:flex; gap:4px; margin:4px 0; }
+          .mw-key { flex:1; min-width:0; height:36px; border:none; border-radius:7px; background:#fff; color:var(--text); font-size:17px; font-family:'DM Sans',sans-serif; box-shadow:0 1px 0 #999; padding:0; touch-action:manipulation; -webkit-user-select:none; user-select:none; }
           .mw-key:active { filter:brightness(0.85); }
           body.mw-kb-open .mw-links { display:none !important; }
-          body.mw-kb-open .mw-main { padding-bottom:270px !important; }
+          body.mw-kb-open .mw-main { padding-bottom:230px !important; }
         }
       `}</style>
 
@@ -1631,6 +1631,12 @@ function typeInto(el, fn) {              // change a React-controlled input the 
   el.dispatchEvent(new Event("input", { bubbles: true }));
   try { el.setSelectionRange(caret, caret); } catch {}
 }
+function keepAboveKeyboard(el) {        // scroll only as far as needed: the field sits just above the keyboard, the word stays in view
+  const kb = document.querySelector(".mw-kb"), box = el.closest(".mw-main");
+  if (!kb || !box) return;
+  const over = el.getBoundingClientRect().bottom - kb.getBoundingClientRect().top + 10;
+  if (over > 0) box.scrollBy({ top: over, behavior: "smooth" });
+}
 function AppKeyboard() {
   const [target, setTarget] = useState(null);
   const [shift, setShift] = useState(false);
@@ -1689,7 +1695,7 @@ function PracticeField({ correctAnswer, isDE, info, onCorrect, onNext }) {
   useEffect(() => {
     setVal("");
     setLastAttempt(null);
-    setTimeout(() => inputRef.current?.focus(), 50);
+    setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 50);
   }, [correctAnswer]);
 
   function check() {
@@ -1698,7 +1704,7 @@ function PracticeField({ correctAnswer, isDE, info, onCorrect, onNext }) {
     setLastAttempt({ text: val, ok });
     setVal("");
     if (ok && onCorrect) onCorrect();
-    inputRef.current?.focus();
+    inputRef.current?.focus({ preventScroll: true });
   }
 
   function handleKeyDown(e) {
@@ -1722,7 +1728,7 @@ function PracticeField({ correctAnswer, isDE, info, onCorrect, onNext }) {
       )}
       <div style={{ display:"flex", gap:6, alignItems:"center" }}>
         <input ref={inputRef} value={val} onChange={e => setVal(e.target.value)} data-appkb="1" inputMode={appKbActive() ? "none" : undefined}
-          onFocus={e => appKbActive() && setTimeout(() => e.target.scrollIntoView({ block:"center", behavior:"smooth" }), 50)}
+          onFocus={e => appKbActive() && setTimeout(() => keepAboveKeyboard(e.target), 80)}
           onKeyDown={handleKeyDown}
           placeholder={lastAttempt?.ok ? "Keep practising…" : `Type "${isDE ? expectedGerman(correctAnswer, info) : correctAnswer}"…`}
           style={{ flex:1, padding:"6px 10px", borderRadius:6, border:"1px solid var(--border)", fontSize:13, outline:"none" }} />
@@ -1731,7 +1737,7 @@ function PracticeField({ correctAnswer, isDE, info, onCorrect, onNext }) {
       {isDE && !appKbActive() && (
         <div style={{ display:"flex", gap:3, flexWrap:"wrap", marginTop:6 }}>
           {DE_CHARS_PRACTICE.map(c => (
-            <button key={c} onClick={() => { setVal(v => v + c); inputRef.current?.focus(); }}
+            <button key={c} onClick={() => { setVal(v => v + c); inputRef.current?.focus({ preventScroll: true }); }}
               style={{ padding:"2px 7px", fontSize:13, borderRadius:4, border:"1px solid var(--border)", background:"var(--surface)", color:"var(--text)" }}>{c}</button>
           ))}
         </div>
@@ -1753,7 +1759,7 @@ function WritingCard({ word, idx, total, isDE_first, prog, curDiff, diffColor, o
   useEffect(() => {
     setInput(""); setChecked(false); setCorrect(false);
     setCurDiffLocal(curDiff); // reset to saved difficulty (or Default) for each new word
-    setTimeout(() => inputRef.current?.focus(), 50);
+    setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 50);
   }, [word.id]);
 
   const promptText = isDE_first ? word.de : word.en;
@@ -1834,7 +1840,7 @@ function WritingCard({ word, idx, total, isDE_first, prog, curDiff, diffColor, o
           {isLearn ? "Now try writing it" : answerLang}
         </div>
         <input ref={inputRef} value={input} onChange={e => setInput(e.target.value)} data-appkb="1" inputMode={appKbActive() ? "none" : undefined}
-          onFocus={e => appKbActive() && setTimeout(() => e.target.scrollIntoView({ block:"center", behavior:"smooth" }), 50)}
+          onFocus={e => appKbActive() && setTimeout(() => keepAboveKeyboard(e.target), 80)}
           onKeyDown={e => { if (e.key==="Enter" && !checked) check(); else if (e.key==="Enter" && checked) handleNext(null); }}
           disabled={checked}
           placeholder={`Type the ${answerLang === "Deutsch" ? "German" : "English"} translation…`}
@@ -1849,7 +1855,7 @@ function WritingCard({ word, idx, total, isDE_first, prog, curDiff, diffColor, o
         {(!isDE_first || isLearn) && !appKbActive() && (
           <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginTop:10 }}>
             {DE_CHARS.map(c => (
-              <button key={c} onClick={() => { setInput(v => v + c); inputRef.current?.focus(); }}
+              <button key={c} onClick={() => { setInput(v => v + c); inputRef.current?.focus({ preventScroll: true }); }}
                 disabled={checked && !isLearn}
                 style={{ padding:"3px 9px", fontSize:14, borderRadius:6, border:"1px solid var(--border)", background:"var(--surface2)", color:"var(--text)", fontFamily:"serif" }}>{c}</button>
             ))}
