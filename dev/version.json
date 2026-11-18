@@ -6,7 +6,7 @@
     "description": "DEV — 5000 German words"
   },
   "app": {
-    "version": "1.5.0-dev",
+    "version": "1.6.0-dev",
     "date": "2026-11-18",
     "changes": [
       "Testing environment — DEV"
