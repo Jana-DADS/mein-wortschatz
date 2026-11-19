@@ -1,7 +1,7 @@
 # 🇩🇪 Mein Wortschatz
 
 A web app for learning German vocabulary with flashcards and spaced repetition. The dictionary contains
-5,000 German words with pronunciation, grammar information, an English translation and an example sentence.
+5,112 German words with pronunciation, grammar information, an English translation and an example sentence.
 The words are ordered by level (A1 → B2) and, inside each level, by how often they are used.
 
 **Production:** https://jana-dads.github.io/mein-wortschatz/
@@ -19,15 +19,17 @@ of each device separately.
 
 | Column | Description |
 |---|---|
-| `id` | Word id = learning order. Never renumber: the learner's progress is stored by id. |
+| `id` | Word id. Never renumber: the learner's progress is stored by id. Cards added later get new ids (5001+). |
 | `de` | German word (lemma) |
 | `pron` | IPA pronunciation |
 | `info` | Word class and forms: `n. — das Haus, pl. Häuser`, `v. — geht, ging, ist gegangen`, `adj. — größer, am größten` |
 | `en` | English translation |
 | `de_sentence` | Example sentence in German |
 | `en_sentence` | Example sentence in English |
-| `level` | CEFR level: A1 (820), A2 (792), B1 (1991), B2 (1397) |
+| `level` | CEFR level: A1 (848), A2 (822), B1 (2039), B2 (1403) |
 | `category` | Thematic category (General, Verbs, Food & Drink, Travel, …) |
+| `order` | Learning order (1 = first). A card added later stands next to the card it belongs to |
+| `added` | Vocabulary version that added the card (empty for the cards of the first release) |
 
 ## How the word list was made
 
@@ -38,6 +40,9 @@ of each device separately.
 3. **Basic sets** (numbers, colours, days, months, family, greetings) are placed between positions 100 and 300.
 4. **Review.** Every card was read and corrected by hand; proper names, regional (Austrian / Swiss) variants and
    separate feminine job titles were left out.
+5. **Version 1.1.** Cards with two unrelated meanings were split into two cards (the new one right after the original
+   in the learning order), sentences whose English translation missed the card's meaning were replaced, and some
+   English meanings were widened with a synonym.
 
 ## Sources and licences
 
@@ -45,8 +50,8 @@ of each device separately.
 - Word frequencies (written): [Leipzig Corpora Collection](https://wortschatz.uni-leipzig.de/en/download), German news 2025, CC BY 4.0
 - Pronunciation, grammar information, translations: [Wiktionary](https://en.wiktionary.org/) via [kaikki.org](https://kaikki.org/), CC BY-SA
 - Levels A1–B1: word lists of the Goethe-Institut (used for the level only)
-- Example sentences: [Tatoeba](https://tatoeba.org/), CC BY 2.0 FR; 113 sentences were written for this list
-- Review of all cards, 113 example sentences, part of the pronunciations and the app itself:
+- Example sentences: [Tatoeba](https://tatoeba.org/), CC BY 2.0 FR; 138 sentences were written for this list
+- Review of all cards, 138 example sentences, part of the pronunciations and the app itself:
   [Claude](https://claude.ai) (Anthropic) together with the project author
 
 Because Wiktionary and FrequencyWords are share-alike sources, `german_vocab.csv` is published under **CC BY-SA 4.0**.

@@ -1,25 +1,23 @@
 {
   "vocab": {
-    "version": "1.0",
-    "date": "2026-11-17",
-    "wordCount": 5000,
-    "description": "First release: 5000 German words ordered by level and frequency"
+    "version": "1.1",
+    "date": "2026-11-19",
+    "wordCount": 5112,
+    "description": "5112 German words ordered by level and frequency; version 1.1 gives words with two meanings a card for each"
   },
   "app": {
-    "version": "1.2.0",
-    "date": "2026-11-17",
+    "version": "1.8.0",
+    "date": "2026-11-19",
     "changes": [
-      "First release of Mein Wortschatz",
-      "New page About & Licence (menu, Settings): sources of the vocabulary and the licence",
-      "Phone layout: on a narrow screen the menu slides in with the ☰ button and closes with ✕, a tap outside or by choosing a page",
-      "Phone layout: bigger buttons, the dictionary shows each word as a card, the app can be added to the home screen (icon: the German flag)",
-      "Update Progress page: note that progress is saved per device and is not shared between phone and computer",
-      "German nouns can be typed with their article (das Haus); a wrong article counts as a mistake",
-      "New setting on the Update Progress page: require the article when typing a German noun",
-      "Fixed labels that still said FR (sidebar, dictionary table and search)",
-      "Removed the flag in front of the app name",
-      "After a wrong answer the correct German noun is always shown with its article (die Ordnung)",
-      "The hint about a missing German voice disappears when the browser finds a German voice"
+      "Vocabulary 1.1: 112 words with two unrelated meanings now have a card for each meaning (zu: to / too, die Bank: bank / bench …); the new card comes right after the original",
+      "Vocabulary 1.1: new example sentences that show the meaning of the card, and wider English meanings (tschüss: bye, goodbye)",
+      "New Words follow the learning order of the vocabulary; words added before your position come first",
+      "Update Progress page: words added to the vocabulary before your position can be skipped (marked as taught)",
+      "Review: a clear message when the chosen topic or level has no taught words yet, with a button to review all taught words",
+      "New page Preferences (menu, Settings): keyboard, articles, learning rules and review intervals; Update Progress keeps only your progress",
+      "Phones: the app's own keyboard (QWERTY with ä ö ü ß, or QWERTZ) with Check and Next keys; a compact card while typing",
+      "Typing German: a card with several forms accepts any of them in any order (der/die/das: die, das der…)",
+      "New page About & Licence: sources of the vocabulary and the licence"
     ]
   }
 }
