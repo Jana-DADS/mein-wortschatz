@@ -1,13 +1,13 @@
 {
   "vocab": {
-    "version": "1.0",
-    "date": "2026-11-18",
-    "wordCount": 5000,
-    "description": "DEV — 5000 German words"
+    "version": "1.1",
+    "date": "2026-11-19",
+    "wordCount": 5112,
+    "description": "DEV — 5112 German words"
   },
   "app": {
-    "version": "1.6.0-dev",
-    "date": "2026-11-18",
+    "version": "1.8.0-dev",
+    "date": "2026-11-19",
     "changes": [
       "Testing environment — DEV"
     ]

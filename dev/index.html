@@ -95,13 +95,15 @@ const PAIR_MODES = ["EN → DE","DE → EN"];
 
 const DEFAULT_VOCAB_URL = "https://raw.githubusercontent.com/Jana-DADS/mein-wortschatz/main/german_vocab.csv";
 const VERSION_JSON_URL = "https://raw.githubusercontent.com/Jana-DADS/mein-wortschatz/main/dev/version.json";
-const APP_VERSION = "1.6.0";
+const APP_VERSION = "1.8.0";
 // Reset stats on new version
 (function() {
   localStorage.setItem("deAppVersion", APP_VERSION);
 })();
 
 // ── localStorage ───────────────────────────────────────────────────────────
+function ord(w) { return w.order || w.id; }   // learning order of a word
+
 function loadProgress() { try { return JSON.parse(localStorage.getItem("deProgress")||"{}"); } catch { return {}; } }
 function saveProgress(p) { try { localStorage.setItem("deProgress",JSON.stringify(p)); } catch {} }
 function loadDailyReview() {
@@ -185,6 +187,8 @@ function parseCSV(text) {
       en_sentence: obj.en_sentence || obj["EN sentence"] || "",
       level: obj.level || "A1",
       category: obj.category || "General",
+      order: parseInt(obj.order) || 0,                        // learning order (vocabulary 1.1+)
+      added: obj.added || "",                                 // vocabulary version that added the word
       difficulty: parseFloat(obj.difficulty) || 2.5,
     });
   }
@@ -392,8 +396,16 @@ function App() {
   const learnedCount    = learntCount;
   const userLevel       = computeLevel(progress, words);
 
+  function skipAdded(ids) {                       // mark words added to the vocabulary as taught, without studying them
+    setProgress(p => {
+      const np = { ...p };
+      ids.forEach(id => { if (!np[id]) np[id] = { difficulty:"Default", nextReview:computeNextReview("Default", settings.intervals), lastSeen:new Date().toISOString(), easyCount:0, correctCount:0 }; });
+      return np;
+    });
+  }
+
   function handleUpdateProgress(t, td, l, s) {
-    const sorted = [...words].sort((a, b) => a.id - b.id);
+    const sorted = [...words].sort((a, b) => ord(a) - ord(b));
     const newProg = {};
     for (let i = 0; i < Math.min(t, sorted.length); i++) {
       const w = sorted[i];
@@ -533,8 +545,9 @@ function App() {
             </div>
           )}
           {view==="dashboard"  && words.length > 0 && <Dashboard words={words} progress={progress} settings={settings} setSettings={setSettings} introducedWords={introducedWords} newWords={newWords} learnedCount={learnedCount} streak={streak} setView={setView} userName={settings.userName} setSessionStartKey={setSessionStartKey} />}
-            {view==="flashcards" && <Flashcards key={sessionStartKey} words={words} progress={progress} settings={settings} setDifficulty={setDifficulty} markCorrect={markCorrect} markWrong={markWrong} markIntroduced={markIntroduced} incrementTaughtToday={incrementTaughtToday} incrementDailyReview={incrementDailyReview} setView={setView} introducedWords={introducedWords} lastNewWordId={lastNewWordId} setLastNewWordId={setLastNewWordId} />}
+            {view==="flashcards" && <Flashcards key={sessionStartKey} setSettings={setSettings} words={words} progress={progress} settings={settings} setDifficulty={setDifficulty} markCorrect={markCorrect} markWrong={markWrong} markIntroduced={markIntroduced} incrementTaughtToday={incrementTaughtToday} incrementDailyReview={incrementDailyReview} setView={setView} introducedWords={introducedWords} lastNewWordId={lastNewWordId} setLastNewWordId={setLastNewWordId} />}
             {view==="dictionary" && <Dictionary words={words} progress={progress} setDifficulty={setDifficulty} />}
+            {view==="update-progress" && <SkipAdded words={words} progress={progress} onSkipAdded={skipAdded} />}
             {view==="update-progress" && <UpdateProgress introducedCount={introducedCount} taughtTodayCount={taughtTodayCount} streak={streak} streakThreshold={settings.streakThreshold || 10} intervals={settings.intervals || { Hard:1, Default:3, Easy:7 }} onUpdateProgress={handleUpdateProgress} onSaveStreakThreshold={(v) => setSettings(s => ({...s, streakThreshold: v}))} onSaveIntervals={(iv) => setSettings(s => ({...s, intervals: iv}))} requireArticle={!!settings.requireArticle} onSaveRequireArticle={(v) => setSettings(s => ({...s, requireArticle: v}))} />}
             {view==="preferences" && <UpdateProgress part="prefs" introducedCount={introducedCount} taughtTodayCount={taughtTodayCount} streak={streak} streakThreshold={settings.streakThreshold || 10} intervals={settings.intervals || { Hard:1, Default:3, Easy:7 }} onUpdateProgress={handleUpdateProgress} onSaveStreakThreshold={(v) => setSettings(s => ({...s, streakThreshold: v}))} onSaveIntervals={(iv) => setSettings(s => ({...s, intervals: iv}))} requireArticle={!!settings.requireArticle} onSaveRequireArticle={(v) => setSettings(s => ({...s, requireArticle: v}))} />}
             {view==="preferences" && <KeyboardChoice value={settings.appKeyboard} onChange={v => setSettings(s => ({ ...s, appKeyboard: v }))} />}
@@ -911,7 +924,7 @@ function DifficultyButtons({ isLearn, wordId, savedDiff, diffColor, setDifficult
 }
 
 // ── Flashcards ─────────────────────────────────────────────────────────────
-function Flashcards({ words, progress, settings, setDifficulty, markCorrect, markWrong, markIntroduced, incrementTaughtToday, incrementDailyReview, setView, introducedWords, lastNewWordId, setLastNewWordId }) {
+function Flashcards({ setSettings, words, progress, settings, setDifficulty, markCorrect, markWrong, markIntroduced, incrementTaughtToday, incrementDailyReview, setView, introducedWords, lastNewWordId, setLastNewWordId }) {
   const isReview = settings.sessionType === "review";
   const isWriting = settings.activeSessionMode === "writing";
 
@@ -948,17 +961,13 @@ function Flashcards({ words, progress, settings, setDifficulty, markCorrect, mar
     } else if (fm === "topic" && fc !== "All") {
       // By Topic: ONLY taught words in topic (words that went through New Words → By Frequency)
       // Does NOT count towards taught — purely a filter/review of already taught words
-      const taught = words.filter(w => w.category === fc && progress[w.id]).sort((a,b) => a.id - b.id);
+      const taught = words.filter(w => w.category === fc && progress[w.id]).sort((a,b) => ord(a) - ord(b));
       return taught;
     } else {
-      // By Frequency: ALL unseen words sorted by ID, continue from lastNewWordId
+      // New words: ALL unseen words in the learning order.
+      // Words added to the vocabulary before the learner's position come first (they can be skipped on Update Progress).
       // Completely ignores topic filter — topic never affects this queue
-      const lastId = loadLastNewWordId(); // always fresh from localStorage
-      const pool = words.filter(w => !progress[w.id]).sort((a, b) => a.id - b.id);
-      if (pool.length === 0) return [];
-      if (lastId === 0) return pool;
-      const startIdx = pool.findIndex(w => w.id > lastId);
-      return startIdx === -1 ? [] : pool.slice(startIdx);
+      return words.filter(w => !progress[w.id]).sort((a, b) => ord(a) - ord(b));
     }
   }
 
@@ -1010,6 +1019,33 @@ function Flashcards({ words, progress, settings, setDifficulty, markCorrect, mar
   const topicName = settings.learnFilterCategory;
   const levelName = settings.reviewFilterLevel || "All";
   const topicHasTaught = isByTopicDone && queue.length > 0;
+
+  // Review with no taught words in the chosen topic or level: say so, and offer all taught words instead
+  if (isReview && queue.length === 0) {
+    const byTopic = settings.reviewFilterMode === "topic" && settings.reviewFilterCategory && settings.reviewFilterCategory !== "All";
+    const byLevel = settings.reviewFilterMode === "level" && settings.reviewFilterLevel && settings.reviewFilterLevel !== "All";
+    const filtered = (byTopic || byLevel) && introducedWords.length > 0;
+    function reviewAll() {
+      setSettings(s => ({ ...s, reviewFilterMode:"frequency", reviewFilterCategory:"All", reviewFilterLevel:"All" }));
+      setView("dashboard"); setTimeout(() => setView("flashcards"), 0);
+    }
+    return (
+      <div style={{ textAlign:"center", padding:"80px 20px" }}>
+        <div style={{ fontSize:48, marginBottom:16 }}>📭</div>
+        <h2 style={{ fontSize:24, color:"var(--accent)", fontFamily:"'Lora',serif" }}>Nothing to review here yet</h2>
+        <p style={{ color:"var(--text2)", marginTop:8, lineHeight:1.6 }}>
+          {byTopic ? `You have no taught words in the topic "${settings.reviewFilterCategory}" yet.`
+            : byLevel ? `You have no taught words at level ${settings.reviewFilterLevel} yet.`
+            : "You have no taught words yet. Start with New Words."}
+          {filtered && <><br/>You have {introducedWords.length} taught {introducedWords.length === 1 ? "word" : "words"} in other topics and levels.</>}
+        </p>
+        <div style={{ display:"flex", gap:12, justifyContent:"center", flexWrap:"wrap", marginTop:24 }}>
+          <button onClick={() => setView("dashboard")} style={{ padding:"11px 24px", background:"var(--surface2)", color:"var(--text)", border:"1px solid var(--border)", borderRadius:10, fontSize:14 }}>← Back</button>
+          {filtered && <button onClick={reviewAll} style={{ padding:"11px 24px", background:"var(--accent)", color:"#fff", border:"none", borderRadius:10, fontSize:14, fontWeight:600 }}>Review all taught words</button>}
+        </div>
+      </div>
+    );
+  }
 
   if (done||!word) return (
     <div style={{ textAlign:"center", padding:"80px 20px" }}>
@@ -1287,6 +1323,30 @@ function KeyboardChoice({ value, onChange }) {
 }
 
 // ── UpdateProgress ────────────────────────────────────────────────────────
+// ── Words added to the vocabulary (Update Progress page) ──────────────────
+function SkipAdded({ words, progress, onSkipAdded }) {
+  const lastId = loadLastNewWordId();
+  const last = words.find(w => w.id === lastId);
+  const lastPos = last ? ord(last) : 0;
+  const skippable = words.filter(w => w.added && !progress[w.id] && ord(w) < lastPos);
+  const [skipped, setSkipped] = useState(0);
+  if (skippable.length === 0 && skipped === 0) return null;
+  return (
+    <div style={{ maxWidth:500, marginBottom:20 }}>
+      {skippable.length > 0 && (
+        <div style={{ background:"var(--surface)", border:"1px solid var(--border)", borderRadius:12, padding:"14px 18px", fontSize:13, lineHeight:1.5 }}>
+          <strong>{skippable.length} words were added</strong> to the vocabulary before your current position (for example {skippable.slice(0, 5).map(w => w.de + " – " + w.en).join(", ")}). Most of them are a second meaning of a word you already know, now on a card of its own. They come first in New Words. If you already know them, you can skip them: they will be marked as taught and come up in Review.
+          <div style={{ marginTop:10 }}>
+            <button onClick={() => { onSkipAdded(skippable.map(w => w.id)); setSkipped(skippable.length); }}
+              style={{ padding:"8px 16px", borderRadius:8, border:"none", background:"var(--accent)", color:"#fff", fontWeight:600, fontSize:13 }}>Skip the added words</button>
+          </div>
+        </div>
+      )}
+      {skipped > 0 && skippable.length === 0 && <div style={{ fontSize:13, color:"var(--easy)" }}>✓ {skipped} added words marked as taught.</div>}
+    </div>
+  );
+}
+
 function UpdateProgress({ part, introducedCount, taughtTodayCount, streak, onUpdateProgress, streakThreshold, onSaveStreakThreshold, intervals, onSaveIntervals, requireArticle, onSaveRequireArticle }) {
   const iv = intervals || { Hard:1, Default:3, Easy:7 };
   const [pTaught, setPTaught] = useState(String(introducedCount));
